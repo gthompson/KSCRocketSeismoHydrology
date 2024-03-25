@@ -1,12 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
-
-
-#!/usr/bin/env python
-# coding: utf-8
-
 # # Convert Phase 2 well data (July 21st 2022 onwards)
 # Locher Environmental recorded data from multiple transducers in two adjacent wells near SLC 39A at Kennedy Space Center (KSC), between March and November, 2022. This was part of a seismo-acoustic erosion pilot experiment. During phase 2 of the experiment, which began on July 21st, 2022, vibrating wire sensors were used and found to give more accurate water levels. These data were captured on Campbell Scientific dataloggers and recorded in TOB3 binary file format. The purpose of this notebook is to:
 # - read these files
