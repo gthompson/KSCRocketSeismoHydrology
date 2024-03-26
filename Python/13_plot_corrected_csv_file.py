@@ -27,7 +27,7 @@ for index, row in lookuptableDF.iterrows():
     print(f"{index}, {row['sourcefile']}, {row['passed']}")    
     df = LLE.removed_unnamed_columns(pd.read_csv(os.path.join(paths['CORRECTED'],row['outputfile'])))
     df['datetime'] = [UTCDateTime(ts).datetime for ts in df['TIMESTAMP']]
-    df.plot(x='datetime', y='
+    df.plot(x='datetime')
     print(df.columns)
     #successful = LLE.convert2mseed(df2, MSEED_DIR, transducersDF)
 
