@@ -175,6 +175,12 @@ def compute_psi(dig, d):
     #print(level)
     return psi
 
+def reverse_compute_psi(psi, d):
+    # inverse function of compute_psi
+    digits = (psi - (d['tt'] - d['tt0']) * d['tf'] + (d['bp'] -  d['bp0'])) / d['gf'] + d['dig0']
+    return digits
+
+
 def psi2pascals(psi):
     return psi * 6894.76
 
@@ -184,10 +190,11 @@ def psi2feet(psi):
 def psi2inches(psi):
     return 2.31 * psi * 12
 
-def localtime2utc(this_dt):
-    hours = 4
-    if this_dt>UTCDateTime(2022,11,6,2,0,0):
-        hours = 5
+def localtime2utc(this_dt, hours): # call with hours=4. # kelly says time was always 4 hours behind UTC. no hour change on 11/6
+    if not hours:
+        hours = 4
+        if this_dt>UTCDateTime(2022,11,6,2,0,0): 
+            hours = 5
     localTimeCorrection = 3600 * hours
     return this_dt + localTimeCorrection
    
@@ -325,7 +332,7 @@ def convert2sds(df, sdsobj, transducersDF, dryrun=False): # I think df here is s
     local_startt = UTCDateTime(df.iloc[0]['TIMESTAMP'])
     nextt = UTCDateTime(df.iloc[1]['TIMESTAMP'])
     dt = nextt-local_startt
-    utc_startt = localtime2utc(local_startt)
+    utc_startt = localtime2utc(local_startt, hours=4)
     if utc_startt > UTCDateTime():
         return
     print('local ', local_startt, '-> UTC ', utc_startt)
@@ -438,7 +445,7 @@ def convert2sds_badfile(df, sdsobj, transducersDF, dryrun=False): # I think df h
     df2_resamp.reset_index(drop=True) # datetime index gone
 
     local_startt = UTCDateTime(df2_resamp.iloc[0]['TIMESTAMP'])
-    utc_startt = localtime2utc(local_startt)
+    utc_startt = localtime2utc(local_startt, hours=4)
     if utc_startt > UTCDateTime():
         return
     print('local ', local_startt, '-> UTC ', utc_startt) 
@@ -497,7 +504,7 @@ def convert2mseed(df, MSEED_DIR, transducersDF): # I think df here is supposed t
     local_startt = UTCDateTime(df.iloc[0]['TIMESTAMP'])
     nextt = UTCDateTime(df.iloc[1]['TIMESTAMP'])
     dt = nextt-local_startt
-    utc_startt = localtime2utc(local_startt)
+    utc_startt = localtime2utc(local_startt, hours=4)
     if utc_startt > UTCDateTime():
         return
     print('local ', local_startt, '-> UTC ', utc_startt)
@@ -600,7 +607,7 @@ def convert2mseed_badfile(df, MSEED_DIR, transducersDF): # I think df here is su
     df2_resamp.reset_index(drop=True) # datetime index gone
 
     local_startt = UTCDateTime(df2_resamp.iloc[0]['TIMESTAMP'])
-    utc_startt = localtime2utc(local_startt)
+    utc_startt = localtime2utc(local_startt, hours=4)
     if utc_startt > UTCDateTime():
         return
     print('local ', local_startt, '-> UTC ', utc_startt) 
@@ -644,4 +651,361 @@ def stream2miniseed(st, mseeddirname):
         except:
             successful = False	
     return successful
+
+
+##### From 2nd workflow - no SDS for well data. from 50_segment_event_files
+
+# How we plot low res well data (1 minute). First method recomputes 60-s data. Second method loads precomputed 60-s data.
  
+def plot_low_resolution_well_data(event_udt, assoc_udt, duration=600, pretrig=3600, posttrig=3600, new_interval=1):
+    start_udt = assoc_udt - pretrig
+    end_udt = assoc_udt + duration + posttrig
+
+    # correct from UTCDateTime requested to local time that well data is in
+    start_dt = utc2localtime(start_udt, hours=4)
+    end_dt = utc2localtime(end_udt, hours=4)
+    
+    instrumentsList = ['Baro', 'Sensors', 'Sensors', 'Sensors']
+    fsList = [100, 1, 20, 100]
+    for instrumentIndex, instruments in enumerate(instrumentsList):
+        fs = fsList[instrumentIndex]
+        timestring = event_udt.strftime('%Y%m%dT%H%M%S')
+        pngpath = os.path.join(PNG_DIR, f'{timestring}_{instruments}_{fs}Hz_long.png')               
+        if os.path.isfile(pngpath):
+            print(pngpath, ' exists')
+            continue
+        try:
+            st = load_data_from_daily_pickle_files(start_dt, end_dt, instruments=instruments, fs=fs, \
+                                               to_stream=True, resample=True, new_interval=new_interval)
+        except:
+            st = None
+        if st:
+            print('writing ',pngpath)
+            st.plot(equal_scale=False, outfile=pngpath);
+
+def plot_60s_well_data(event_udt, assoc_udt, duration=600, pretrig=3600, posttrig=3600):
+    MSEED_DIR = os.path.join(paths['CORRECTED'], 'daily60s')
+    instrumentsList = ['Baro', 'Sensors', 'Sensors', 'Sensors']
+    fsList = [100, 1, 20, 100]
+    new_interval = 60
+    
+    start_udt = assoc_udt - pretrig
+    end_udt = assoc_udt + duration + posttrig
+
+    # correct from UTCDateTime requested to local time that well data is in
+    start_dt = utc2localtime(start_udt, hours=4)
+    end_dt = utc2localtime(end_udt, hours=4)
+    
+    for instrumentIndex, instruments in enumerate(instrumentsList):
+        fs = fsList[instrumentIndex]
+        st_all = obspy.Stream()
+        print('\n**********\n',instruments,fs,'\n')
+        
+        timestring = event_udt.strftime('%Y%m%dT%H%M%S')
+        pngpath = os.path.join(PNG_DIR, f'{timestring}_{instruments}_{fs}Hz_long.png')   
+        if os.path.isfile(pngpath):
+            print(pngpath, ' exists')
+            continue
+
+        this_dt = start_dt
+        while this_dt < end_dt:
+            that_dt = this_dt + datetime.timedelta(days=1)
+            mseedfile = f"{this_dt.strftime('%Y%m%d')}_{instruments}_{fs}Hz_to_{new_interval}s.mseed"
+            mseedpath = os.path.join(MSEED_DIR, mseedfile)
+            if os.path.isfile(mseedpath):
+                #print('Reading ',mseedpath)
+                st = obspy.read(mseedpath)
+                st_all = st_all + st
+                st_all.merge()
+                #print(st_all)
+            else:
+                #print(mseedpath,' not found')
+                pass
+            this_dt = that_dt
+        if len(st_all)>0:
+            st_all.trim(starttime=obspy.UTCDateTime(start_dt), endtime=obspy.UTCDateTime(end_dt))
+            for tr in st_all:
+                if isinstance(tr.data, np.ma.masked_array):
+                    #tr.data = tr.data.filled(fill_value=np.nanmedian(tr.data))
+                    tr.data = tr.data.filled(fill_value=np.nan)
+            print(st_all)
+            print('writing ',pngpath)
+            st_all.plot(equal_scale=False, outfile=pngpath)
+
+# This is how we load high-res well data (1 Hz, 20 Hz, 100 Hz)
+
+def load_data_from_daily_pickle_files(start_dt, end_dt, instruments='Sensors', fs=100, resample=True, new_interval=None, max_samples=1000, \
+                 average='median', to_stream=True, plot_data=True, print_dataframe=True):
+    start_date = start_dt.date()
+    end_date = end_dt.date()    
+    
+    delta = datetime.timedelta(days=1)
+    this_date = start_date
+    combineddf = pd.DataFrame()
+    while this_date <= end_date:
+        #print(this_date.strftime("%Y-%m-%d"))
+        combined_pklfile = f"{this_date}_{instruments}_{fs}Hz.pkl"
+        combined_pklpath = os.path.join(COMBINED_DIR, combined_pklfile)
+        #print(combined_pklpath)
+        if os.path.isfile(combined_pklpath):
+            print('Loading ',combined_pklpath)
+            if len(combineddf)>0:
+                df = pd.read_pickle(combined_pklpath)
+                if print_dataframe:
+                    print(f'DataFrame from {combined_pklfile}')
+                    print(df)
+                    df.to_csv(combined_pklpath.replace('.pkl','.csv'))
+                combineddf = pd.concat([combineddf, df])
+            else:
+                combineddf = pd.read_pickle(combined_pklpath)
+                if print_dataframe:
+                    print(f'DataFrame from {combined_pklfile}')
+                    print(combineddf)
+                    combineddf.to_csv(combined_pklpath.replace('.pkl','.csv'))
+        else:
+            print('file not found: ', combined_pklpath)
+        this_date += delta
+
+
+    if len(combineddf)==0:
+        return None
+
+    if not 'datetime'  in combineddf.columns:
+        combineddf['datetime'] = [obspy.UTCDateTime(ts).datetime for ts in combineddf['TIMESTAMP']]
+
+    # apply time subset
+    mask = (combineddf['datetime'] >= start_dt) & (combineddf['datetime'] < end_dt)
+    combineddf = combineddf.loc[mask]
+
+    combineddf.set_index('datetime', inplace=True)
+    combineddf.drop(columns=['TIMESTAMP', 'date', 'RECORD'], inplace=True)
+
+    if resample or new_interval:
+        if not new_interval:
+            seconds = [1, 5, 10, 60, 300, 600, 900, 1800, 3600]
+            seconds_index = 0
+            estimated_delta = len(combineddf)/(max_samples * fs)
+            
+            while seconds[seconds_index] <= estimated_delta:
+                seconds_index += 1
+        
+            new_interval = seconds[seconds_index] 
+    
+        print(f'resampling to {new_interval}-s sampling interval, taking median of each timewindow')
+        if average=='median':
+            combineddf = combineddf.resample(f"{new_interval}s").median()
+        else:
+            combineddf = combineddf.resample(f"{new_interval}s").mean()
+
+        if len(combineddf)==0:
+            return None
+    
+    #combineddf.reset_index(inplace=True)
+    if to_stream:
+        st = obspy.Stream()
+        for col in combineddf.columns:
+            tr = obspy.Trace(data=combineddf[col].to_numpy())
+            tr.stats.starttime = obspy.UTCDateTime(combineddf.index[0])
+            tr.stats.delta = obspy.UTCDateTime(combineddf.index[1]) - obspy.UTCDateTime(combineddf.index[0])
+            tr.stats.network = col[0:2]
+            if len(col)>7:
+                tr.stats.station = col[2:7]
+                if len(col)>9:
+                    tr.stats.location = col[7:9]
+                    tr.stats.channel = col[9:]
+                else:
+                    tr.stats.location = col[7:]
+            else:
+                tr.stats.station = col[2:]
+            st.append(tr)
+        if plot_data:
+            st.plot(equal_scale=False);
+        return st
+    else:
+        if plot_data:
+            combineddf.plot(y=combineddf.columns)
+        return combineddf
+
+
+
+def utc2localtime(this_udt, hours=None):
+    if not hours: # Kelly says was always 4 hours behind. Didn't change to 5 hours at Nov 6th.
+        hours = 4
+        if this_udt>obspy.UTCDateTime(2022,11,6,2,0,0):
+            hours = 5
+    localTimeCorrection = 3600 * hours
+    this_dt = this_udt - localTimeCorrection
+    return this_dt.datetime
+
+def plot_high_resolution_well_data(event_udt, assoc_udt, duration=600, pretrig=150, posttrig=150, ext='short', overwrite=False, print_dataframe=False):
+    start_udt = assoc_udt - pretrig
+    end_udt = assoc_udt + duration + posttrig
+
+    # correct from UTCDateTime requested to local time that well data is in
+    start_dt = utc2localtime(start_udt, hours=4)
+    end_dt = utc2localtime(end_udt, hours=4)
+    
+    instrumentsList = ['Baro', 'Sensors', 'Sensors', 'Sensors']
+    fsList = [100, 1, 20, 100]
+    for instrumentIndex, instruments in enumerate(instrumentsList):
+        fs = fsList[instrumentIndex]
+        timestring = event_udt.strftime('%Y%m%dT%H%M%S')
+        pngpath = os.path.join(PNG_DIR, f'{timestring}_{instruments}_{fs}Hz_{ext}.png') 
+        if os.path.isfile(pngpath) and not overwrite:
+            print(pngpath, ' exists')
+            continue
+        try:
+            st = load_data_from_daily_pickle_files(start_dt, end_dt, instruments=instruments, fs=fs, \
+                                               to_stream=True, resample=False, print_dataframe=print_dataframe)
+        except:
+            st = None
+            
+        if st:
+            print('writing ',pngpath)
+            st.plot(equal_scale=False, outfile=pngpath);
+
+
+# Next few functions relate to plotting sampling intervals different than expected
+
+def plot_timediff_well_data(COMBINED_DIR, start_dt=None, end_dt=None):
+
+    # correct from UTCDateTime requested to local time that well data is in
+    if not start_dt:
+        start_dt = UTCDateTime(2022,7,21)
+    if not end_dt:
+        end_dt = UTCDateTime(2022,12,3)
+    
+    instrumentsList = ['Sensors', 'Sensors', 'Sensors', 'Baro']
+    fsList = [1, 20, 100, 100]
+
+    for instrumentIndex, instruments in enumerate(instrumentsList):
+        fs = fsList[instrumentIndex]
+
+        csvfile = os.path.join(COMBINED_DIR, f"timedf_masked_{start_dt}_{end_dt}_{instruments}_{fs}Hz.csv")
+        if os.path.isfile(csvfile):
+            print(f'Reading {csvfile}')
+            timedf_masked = pd.read_csv(csvfile)
+            if '0' in timedf_masked.columns:
+                timedf_masked.rename(columns={"0": "datetime"}, inplace=True)
+        else:
+            timedf_masked = load_timeonly_from_daily_pickle_files(start_dt, end_dt, COMBINED_DIR, instruments=instruments, fs=fs)
+            timedf_masked.to_csv(csvfile)
+
+        print(timedf_masked.columns)
+        print(timedf_masked)
+        if len(timedf_masked)>0:
+            title=f"{instruments}_{fs}"
+            plot_timediff(timedf_masked, title=title, outfile=csvfile.replace('.csv', '.png') )
+            plot_timediff(timedf_masked, title=title+' zoomed', outfile=csvfile.replace('.csv', '_zoomed.png'), maxsecs=10.0 )
+
+'''
+def load_timeonly_from_daily_pickle_files(start_date, end_date, COMBINED_DIR, instruments='Sensors', fs=100, hours=4):
+    # though similar to load_data_from_daily_picle_files, this function expects input local time dates that are UTCDateTime objects,
+    # rather than datetime, and applies a 4 hour time shift by default, to correct from local to UTC.
+
+    total_pklfile = f"{start_date}_{end_date}_{instruments}_{fs}Hz.pkl"
+    total_pklpath = os.path.join(COMBINED_DIR, total_pklfile)
+    success=False
+    if os.path.isfile(total_pklpath):
+        print(f'Loading {total_pklpath}')
+        ts_series = pd.read_pickle(total_pklpath)
+        print(ts_series)
+        ts = ts_series.to_list()
+        if len(ts)>0:
+
+            success = True
+    if success==False:
+        this_date = start_date
+        ts = []
+        timedf_masked = pd.DataFrame()
+        while this_date <= end_date:
+
+            combined_pklfile = f"{this_date.strftime('%Y-%m-%d')}_{instruments}_{fs}Hz.pkl"
+            combined_pklpath = os.path.join(COMBINED_DIR, combined_pklfile)
+
+            if os.path.isfile(combined_pklpath):
+                print('Loading ',combined_pklpath)
+                
+                if len(ts)>0:
+                    df = pd.read_pickle(combined_pklpath)
+                    ts.extend(df['TIMESTAMP'].to_list())
+
+                else:
+                    df = pd.read_pickle(combined_pklpath)
+                    ts = df['TIMESTAMP'].to_list()
+                    this_timedfmasked = timestamplist_to_timedataframeoutliers(ts, tolerance_pct=10)
+                    timedf_masked = pd.concat([timedf_masked, this_timedfmasked])
+            else:
+                print('file not found: ', combined_pklpath)
+            this_date += 86400
+
+        ts_series = pd.Series(ts)
+        ts_series.to_pickle(total_pklpath)
+    
+    if len(ts)==0:
+        return None
+'''
+def load_timeonly_from_daily_pickle_files(start_date, end_date, COMBINED_DIR, instruments='Sensors', fs=100, hours=4):
+    # though similar to load_data_from_daily_picle_files, this function expects input local time dates that are UTCDateTime objects,
+    # rather than datetime, and applies a 4 hour time shift by default, to correct from local to UTC.
+
+
+    this_date = start_date
+    last_ts = None
+    timedf_masked = pd.DataFrame()
+    while this_date <= end_date:
+
+        combined_pklfile = f"{this_date.strftime('%Y-%m-%d')}_{instruments}_{fs}Hz.pkl"
+        combined_pklpath = os.path.join(COMBINED_DIR, combined_pklfile)
+
+        if os.path.isfile(combined_pklpath):
+            print('Loading ',combined_pklpath)
+            df = pd.read_pickle(combined_pklpath)
+            ts = df['TIMESTAMP'].to_list()
+            if last_ts:
+                ts.insert(0, last_ts)
+            this_timedfmasked = timestamplist_to_timedataframeoutliers(ts, tolerance_pct=10)
+            timedf_masked = pd.concat([timedf_masked, this_timedfmasked])
+            last_ts = ts[-1]
+        else:
+            print('file not found: ', combined_pklpath)
+        this_date += 86400
+
+    timedf_masked
+    print(timedf_masked)
+    return timedf_masked
+
+def timestamplist_to_timedataframe(ts):
+    datetimeindex = pd.to_datetime(ts) #, format='%Y-%m-%d %H:%M:%S.%f')
+    timedf = datetimeindex.to_frame()
+    timedf['diff'] = datetimeindex.diff().total_seconds()
+    timedf.rename(columns={"0": "datetime"})
+    return timedf
+    
+def remove_good_sampling_intervals(timedf, tolerance_pct=10):
+    tolerance_frac = (1.0+tolerance_pct/100)
+    median_dt = timedf['diff'].median()
+    max_dt = median_dt * tolerance_frac
+    min_dt = median_dt / tolerance_frac
+    mask = (timedf['diff'] > max_dt) | (timedf['diff'] < min_dt)
+    timedf_masked = timedf[mask]
+    return timedf_masked
+
+def timestamplist_to_timedataframeoutliers(ts, tolerance_pct=10):
+    timedf = timestamplist_to_timedataframe(ts)
+    timedf_masked = remove_good_sampling_intervals(timedf, tolerance_pct=tolerance_pct)
+    return timedf_masked
+
+def plot_timediff(timedf_masked, title=None, outfile=None, ylim=None, maxsecs=None, xlim=None):
+    #xlim=(timedf_masked.index[0], timedf_masked.index[-1])
+    if maxsecs:
+        mask = (timedf_masked['diff'] <= maxsecs) & (timedf_masked['diff'] >= -maxsecs)
+        timedf_masked = timedf_masked[mask]
+    ph = timedf_masked.plot(x='datetime', y='diff',  marker='.', linestyle='none', xlim=xlim, ylim=ylim, ylabel='Sampling interval (s)', title=title, rot=45)
+    fh = ph.get_figure()
+    if outfile:
+        print(f'Saving plot to {outfile}')
+        fh.savefig(outfile)
+    else:
+        fh.show()
+    return fh, ph
