@@ -1,4 +1,35 @@
-
+"""
+The program create_data_inventory.py in the KSCRocketSeismoHydrology repo, under Python/new_workflow was used to convert data files in the Dropbox 2022_DATA directory (‘Dropbox/PROFESSIONAL/RESEARCH/3_Project_Documents/NASAprojects/201602_Rocket_Seismology/DATA/2022_DATA/WellData')
+What it does is:
+- loops over all directories
+- ignores the “combined” directory
+- loops over each filename ending with .csv or .pkl
+- ignores files with ‘gps’ in them – those were records of timing glitches
+- ignores files starting with “._” if the rest of the filename matches another that exists
+- checks if file already in reverse_lookup.csv, if not calls process_file, and appends to allmasterrows, which periodically is written to data_inventory.csv
+process_file() does the following:
+- splits dirname, filename to get uploadfolder, sampratefolder, basefilename, ext, realsamprate, seqno
+- loads filename
+- determines column headers (not always first row)
+- drops any rows with a TIMESTAMP more than 4 hours from the median TIMESTAMP
+- creates a row for the data_inventory.csv file with:
+    • - filename
+    • - topdir
+    • - uploadfolder
+    • - sampratefolder
+    • - basename
+    • - samprate
+    • - seqno
+    • - starttime
+    • - endtime
+    • - dropped_headers (boolean)
+    • - dropped_rows (number of)
+    • - calibrated (None=unknown, False, True)
+    • - median value for each transducer column
+- creates a file in /data/KSC/EROSION/fromdropboxinventory
+- creates a copy of the file,matching uploadfolder/sampratefolder/basename_starttime_seqno.csv, OR
+- if data calibrated, calls libWellData.py/uncalibrate_to_raw() to reverse the calibration, and replaces .csv with _REVERSED.csv
+"""
 import os
 import sys
 import re
@@ -17,6 +48,7 @@ MASTERCSV = os.path.join(RAWDIR, f'data_inventory.csv')
 erase=False
 if erase:
     os.system(f'rm -rf {RAWDIR}/*')
+if not os.path.isfile(FILELOOKUPCSV):
     os.system(f'echo "fullpath, outpklfullpath, basename, starttime, endtime, seqno" > {FILELOOKUPCSV}')
 lookupdf = pd.read_csv(FILELOOKUPCSV)
 if os.path.isfile(MASTERCSV):
@@ -25,7 +57,7 @@ else:
     allmasterrows=[]
 import libWellData as LLE
 transducersDF = pd.read_csv('transducer_metadata.csv')
-
+"""
 def uncalibrate_to_raw(df, pklfile, to_csv=True):
     print('- Reverse calibration equations')
     for col in df.columns:
@@ -41,7 +73,7 @@ def uncalibrate_to_raw(df, pklfile, to_csv=True):
         df.to_csv(pklfile.replace('.pkl', '.csv'), index=False)
     else:
         df.to_pickle(pklfile)
-
+"""
 def copy_to_raw(df, pklfile, to_csv=True):
     print('- copying data to %s' % pklfile)       
     if to_csv:       
@@ -154,10 +186,8 @@ def process_file(dirpath, file, filenum, load=False):
                         col = columns_old[colnum]
                     else:
                         continue
-                        # just seems to be an index that was saved into CSV file in corrected directory.
-                        #if col=='Unnamed: 0' and df.loc[0][col]=='3':
-                        #    continue
-                            
+                        # just seems to be an index that was saved into CSV file in corrected directory.    print('- Reverse calibration equations')
+     
                 try:
                     df[col]=df[col].astype(float)
                     if df[col].apply(float.is_integer).all():
@@ -178,30 +208,23 @@ def process_file(dirpath, file, filenum, load=False):
             #print(col, df[col].dtype)
         #mybasename = re.sub(f'masterrow["seqno"]$', '', masterrow['basename'])
         mybasename = masterrow['basename'][:masterrow['basename'].rfind(masterrow['seqno'])]
-        outpkldir = os.path.join(RAWDIR, masterrow['uploadfolder'], masterrow['sampratefolder'])
-        '''
-        outpklfile = masterrow['topdir'].replace('./','').replace('/','_') + '_' + \
-            mybasename + '_' + \
+        outdir = os.path.join(RAWDIR, masterrow['uploadfolder'], masterrow['sampratefolder'])
+        outfile = mybasename + '_' + \
             masterrow['starttime'].strftime('%Y%m%d%H%M%S_') + \
             f"{int(masterrow['seqno']):03d}" + \
-            '.pkl'
-        '''
-        outpklfile = mybasename + '_' + \
-            masterrow['starttime'].strftime('%Y%m%d%H%M%S_') + \
-            f"{int(masterrow['seqno']):03d}" + \
-            '.pkl'
-        outpklfullpath = os.path.join(outpkldir, outpklfile)
-        if not os.path.isdir(outpkldir):
-            os.makedirs(outpkldir)
+            '.csv'
+        outfullpath = os.path.join(outdir, outfile)
+        if not os.path.isdir(outdir):
+            os.makedirs(outdir)
         if masterrow['calibrated']==True:
-            outpklfullpath = outpklfullpath.replace('.pkl', '_REVERSED.pkl')
-        while os.path.isfile(outpklfullpath):
-            outpklfullpath = outpklfullpath.replace('.pkl', 'x.pkl')
+            outfullpath = outfullpath.replace('.csv', '_REVERSED.csv')
+        while os.path.isfile(outfullpath):
+            outfullpath = outfullpath.replace('.csv', 'x.csv')
         if masterrow['calibrated']==True:
-            uncalibrate_to_raw(df, outpklfullpath)
+            LLE.uncalibrate_to_raw(transducersDF, df, outfullpath)
         else:
-            copy_to_raw(df, outpklfullpath)
-        os.system(f"echo {fullpath}, {outpklfullpath}, {masterrow['basename']}, {masterrow['starttime']}, {masterrow['endtime']}, {masterrow['seqno']} >> {FILELOOKUPCSV}")
+            copy_to_raw(df, outfullpath)
+        os.system(f"echo {fullpath}, {outfullpath}, {masterrow['basename']}, {masterrow['starttime']}, {masterrow['endtime']}, {masterrow['seqno']} >> {FILELOOKUPCSV}")
         
     return masterrow
   
@@ -219,7 +242,7 @@ for dirpath, dirnames, filenames in os.walk("."):
     for filename in sorted(filenames):
         if filename.endswith((".csv", '*.pkl')):
             masterrow = []
-            if 'gps' in filename or 'data_inventory' in filename or 'lookuptable' in filename or 'transducer' in filename or 'HOF' in filename:
+            if 'gps' in filename or 'data_inventory' in filename or 'lookuptable' in filename or 'transducer' in filename or 'HOF' in filename or 'checkpoint' in filename:
                 masterrow = 'did not match file filter'
             else:
                 if filename.startswith("._"):

@@ -7,8 +7,6 @@ import pandas as pd
 # Define phase 2 lookup table & conversions
 # From "2022-12-03_ Field Sheet for Deployment of Groundwater Equipment at NASA_Part_II.pdf" 
 def get_transducers_dataframe(paths):
-    import os
-    import pandas as pd
     if os.path.isfile(paths['transducersCSVfile']):
         transducersDF = pd.read_csv(paths['transducersCSVfile'])
     else:
@@ -180,6 +178,29 @@ def reverse_compute_psi(psi, d):
     digits = (psi - (d['tt'] - d['tt0']) * d['tf'] + (d['bp'] -  d['bp0'])) / d['gf'] + d['dig0']
     return digits
 
+def uncalibrate_to_raw(transducersDF, df, outfile):
+    print('- Reverse calibration equations')
+    for col in df.columns:
+        if col[0:2]=='12' or col[0:2]=='21':
+            print(f'Converting column {col}')
+            this_transducer = transducersDF[(transducersDF['serial']) == col]
+            #print(this_transducer)
+            if len(this_transducer.index)==1:
+                this_transducer = this_transducer.iloc[0].to_dict()
+                #print(this_transducer)
+                print('Calling reverse_compute_psi')
+                df[col] = reverse_compute_psi(df[col].to_numpy(), this_transducer)
+            else:
+                print('length not 1')
+        else:
+            print(f'column {col} not scheduled for conversion')
+    print('- writing reverse corrected data to %s' % outfile)
+    print(df.head())
+    if outfile.endswith('.csv'):
+        df.to_csv(outfile, index=False)
+    elif outfile.endswith('.pkl'):
+        df.to_pickle(outfile)
+    print('\n\n\n')
 
 def psi2pascals(psi):
     return psi * 6894.76
@@ -224,7 +245,8 @@ def correct_csvfiles(csvfiles, paths, converted_by_LoggerNet=True, MAXFILES=None
     lod = []
     for filenum, rawcsvfile in enumerate(csvfiles[0:MAXFILES]):
         csvbase = os.path.basename(rawcsvfile)
-        print('File %d of %d: %s' % ((filenum+1), MAXFILES, rawcsvfile))
+        print('File %d of %d: %s' % ((filenum+1), MAXFILES, csvbase))
+
         dirname = os.path.basename(os.path.dirname(rawcsvfile))
         uploaddir = os.path.basename(os.path.dirname(os.path.dirname(rawcsvfile)))
         correctedcsvfile = os.path.join("%s.%s.%s" % (os.path.basename(uploaddir), dirname, csvbase))
