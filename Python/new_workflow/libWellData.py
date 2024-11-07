@@ -109,7 +109,7 @@ def list_loggernet_tob3_files(TOB3_DIR):
     return list_cs_files(TOB3_DIR, ext='.dat')
 
 # Generate complete list of LoggerNet CSV files (converted from TOB3 files with LoggerNet)
-def list_loggernet_csv_files(TOB3_DIR, ext='.csv'):
+def list_loggernet_csv_files(CSVDIR, ext='.csv'):
     return  list_cs_files(CSVDIR, ext=ext)
 
 
