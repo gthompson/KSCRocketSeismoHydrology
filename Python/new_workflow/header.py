@@ -43,7 +43,8 @@ def setup_environment():
         paths['TOB3_DIR'] = os.path.join(paths['WELLDATA_TOP'], 'Uploads')
 
     #paths['lookuptable'] = os.path.join(paths['repodir'],'lookuptable.csv') # old workflow
-    paths['transducersCSVfile'] = os.path.join(paths['repodir'], 'transducer_metadata_old.csv') # does not exist need to get from linux
+    #paths['transducersCSVfile'] = os.path.join(paths['repodir'], 'transducer_metadata_old.csv') # does not exist need to get from linux
+    paths['transducersCSVfile'] = os.path.join(paths['repodir'], 'transducer_metadata_new.csv') 
     
 
     return paths
