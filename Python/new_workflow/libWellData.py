@@ -1031,3 +1031,127 @@ def plot_timediff(timedf_masked, title=None, outfile=None, ylim=None, maxsecs=No
     else:
         fh.show()
     return fh, ph
+
+# set standard temperature and pressure
+std_temperature = 20.0
+std_passcals = 101325
+pa2psi = 0.000145038
+std_psi = std_passcals * pa2psi
+
+def PaDiff1m(T=std_temperature):
+    PaPerM = 12.67 - 0.041*T
+    return PaPerM
+
+def correctForHeightAboveWaterFt(heightFt=0, T=std_temperature):
+    heightM = heightFt * 0.3048
+    psi_shift = (PaDiff1m(T=T) * heightM) * pa2psi
+    return psi_shift
+
+def correctForDepthBelowWaterFt(depthFt=0, T=std_temperature):
+    # correct up to 0m
+    psi_shift = depthFt/2.31
+    return psi_shift
+
+def correctVibratingWireDigits(rawSeries, this_transducer, temperatureSeries=None, airpressureSeries=None, depthCorrect=False):
+    # correct for gain
+    a = (rawSeries - this_transducer['dig0']) * this_transducer['gf']
+    tc = pd.Series()
+    apc = pd.Series()
+    psiShift = 0.0
+    # correct for temperature
+    if isinstance(temperatureSeries,pd.Series):
+        tc = (temperatureSeries - this_transducer['tt0']) * this_transducer['tf']
+        #print('- temperature correction')
+        #print(pd.Series(tc).describe())
+        a += tc
+    # correct for air pressure
+    if isinstance(airpressureSeries,pd.Series):
+        apc = (airpressureSeries - this_transducer['bp0'])
+        #print('- air pressure correction')
+        #print(pd.Series(apc).describe())
+        a -= apc
+    # correct for depth back to water surface
+    if depthCorrect:
+        psiShift = correctForDepthBelowWaterFt(depthFt=-this_transducer['set_depth_ft'])
+        #print(f'- depth correction {psiShift}')
+        a -= psiShift
+    print(f'T-correction={tc.mean()}, AP-correction={apc.mean()}, DCshift={-psiShift}')
+    return a   
+
+def get_transducer_metadata(serialnum, transducersDF):
+    this_transducer = None
+    subsetdf = transducersDF[(transducersDF['serial']) == serialnum]
+    if len(subsetdf.index)==1:
+        this_transducer = subsetdf.iloc[0].to_dict()    
+    return this_transducer
+
+
+def correctBarometricData(rawdf, barometricColumns, transducersDF, temperatureCorrect=True, heightCorrect=True, dcshifts=[14.42556,14.55743]):
+    # turn barometric columns from digits into PSI
+    barometricDF = rawdf.copy()
+    for colindex,col in enumerate(barometricColumns):
+        if col in barometricDF:
+            this_transducer = get_transducer_metadata(col, transducersDF)
+            if isinstance(col,str) and (col=='1226420' or col=='1226429'):
+                   
+                # get temperature series
+                tempcol = f'{col}_temp'
+                temperatureSeries=None
+                if temperatureCorrect:
+                    if tempcol in barometricDF.columns:
+                        temperatureSeries = barometricDF[tempcol]
+                        print(col, temperatureSeries)
+
+                barometricDF[col] = correctVibratingWireDigits(barometricDF[col], this_transducer, \
+                                                              temperatureSeries=temperatureSeries, \
+                                                                airpressureSeries=None, \
+                                                                    depthCorrect=False)        
+
+            # do height correction - we do this for analog barometers too
+            if heightCorrect:
+                psiShift = correctForHeightAboveWaterFt(heightFt=this_transducer['set_depth_ft'])
+                barometricDF[col] += psiShift
+
+            # do DCshift
+            if len(dcshifts)==len(barometricColumns):
+                barometricDF[col] += dcshifts[colindex]
+
+
+    return barometricDF
+
+def rawdf2psidf(barometricdf, transducersDF, temperatureCorrect=True, airpressureCorrect=True, depthCorrect=False):
+    psidf = barometricdf.copy()
+    #print('- Applying calibration equations')
+    for col in psidf.columns:
+        if isinstance(col,str) and (col[0:2]=='12' or col[0:2]=='21'):
+            if isinstance(col,str) and (col=='1226420' or col=='1226429'):
+                continue # we should already have corrected these to sea level PSI
+            this_transducer = get_transducer_metadata(col, transducersDF)
+            if this_transducer:
+
+                # get temperature series
+                tempcol = f'{col}_temp'
+                temperatureSeries=None
+                if tempcol in psidf.columns:
+                    temperatureSeries = psidf[tempcol]
+
+                # get airpressure series
+                airpressureSeries = None
+                if airpressureCorrect:
+                    '''
+                    if this_transducer['well']=='shallow':
+                        airpressureSeries = psidf['1226420']
+                    elif this_transducer['well']=='intermediate':
+                        airpressureSeries = psidf['1226429']
+                    '''
+                    airpressureSeries = psidf['1226429']
+                psidf[col] = correctVibratingWireDigits(psidf[col], this_transducer, \
+                                                              temperatureSeries=temperatureSeries, \
+                                                                airpressureSeries=airpressureSeries, \
+                                                                    depthCorrect=depthCorrect)
+    return psidf
+
+
+def psidf2passcalsdf():
+    # convert every PSI column to Pa
+    pass
