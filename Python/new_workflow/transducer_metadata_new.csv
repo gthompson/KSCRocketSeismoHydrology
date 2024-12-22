@@ -1,11 +1,11 @@
-,serial,Fs,sensor,shielding,range_kPa_low,range_kPa_high,media,type,model,set_depth_ft,id,dig0,gf,tt,tt0,tf,bp,bp0
-0,AirPressureShallow,100,barometer,none,100,100,air,pressure,Keller 0507.01401.051311.07,3.81,6S.02374.88.HDH,,,,,,,
-1,1226420,100,vibrating_wire,none,70,170,air,level,Geokon 4500AL,4.46,6S.12264.20.HDD,9751.0,-0.006458,21.6,21.3,-0.008795,0.0,14.298
-2,1226423,20,vibrating_wire,foam,70,170,water,level,Geokon 4500AL,-5.83,6S.12264.23.BDD,9605.0,-0.006347,21.6,22.2,-0.004197,14.504,14.298
-3,1226419,100,vibrating_wire,foam,70,170,water,level,Geokon 4500AL,-6.71,6S.12264.19.HDD,10040.0,-0.006441,21.6,21.1,-0.01087,14.504,14.298
-4,1226421,100,vibrating_wire,none,70,170,water,level,Geokon 4500AL,-7.71,6S.12264.21.HDD,9787.0,-0.006724,21.6,21.3,-0.001145,14.504,14.298
-5,AirPressureDeep,100,barometer,none,100,100,air,pressure,Keller 0507.01401.051311.07,3.86,6I.0XXXX.XX.HDH,,,,,,,
-6,1226429,100,vibrating_wire,none,70,170,air,level,Geokon 4500AL,4.11,6I.12264.29.HDD,9800.0,-0.006428,22.6,21.6,-0.002384,0.0,14.298
-7,2151692,20,vibrating_wire,foam,70,170,water,level,Geokon 4500AL,-9.14,6I.21516.92.BDD,9459.0,-0.008038,22.8,21.8,-0.007666,14.296,14.388
-8,2151691,100,vibrating_wire,foam,70,170,water,level,Geokon 4500AL,-18.31,6I.21516.91.HDD,9414.0,-0.008142,22.8,21.5,-0.008742,14.296,14.388
-9,2149882,100,vibrating_wire,none,70,170,water,level,Geokon 4500AL,-19.14,6I.21498.82.HDD,9734.0,-0.008075,20.7,21.3,-0.000675,14.602,14.389
+,serial,Fs,sensor,shielding,range_kPa_low,range_kPa_high,media,type,model,set_depth_ft,id,well,dig0,gf,tt,tt0,tf,bp,bp0
+0,AirPressureShallow,100,barometer,none,100,100,air,pressure,Keller 0507.01401.051311.07,3.81,6S.02374.88.HDH,shallow,,,,,,,
+1,1226420,100,vibrating_wire,none,70,170,air,level,Geokon 4500AL,4.46,6S.12264.20.HDD,shallow,9751.0,-0.006458,21.6,21.3,-0.008795,0.0,14.298
+2,1226423,20,vibrating_wire,foam,70,170,water,level,Geokon 4500AL,-5.83,6S.12264.23.BDD,shallow,9605.0,-0.006347,21.6,22.2,-0.004197,14.504,14.298
+3,1226419,100,vibrating_wire,foam,70,170,water,level,Geokon 4500AL,-6.71,6S.12264.19.HDD,shallow,10040.0,-0.006441,21.6,21.1,-0.01087,14.504,14.298
+4,1226421,100,vibrating_wire,none,70,170,water,level,Geokon 4500AL,-7.71,6S.12264.21.HDD,shallow,9787.0,-0.006724,21.6,21.3,-0.001145,14.504,14.298
+5,AirPressureDeep,100,barometer,none,100,100,air,pressure,Keller 0507.01401.051311.07,3.86,6I.0XXXX.XX.HDH,intermediate,,,,,,,
+6,1226429,100,vibrating_wire,none,70,170,air,level,Geokon 4500AL,4.11,6I.12264.29.HDD,intermediate,9800.0,-0.006428,22.6,21.6,-0.002384,0.0,14.298
+7,2151692,20,vibrating_wire,foam,70,170,water,level,Geokon 4500AL,-9.14,6I.21516.92.BDD,intermediate,9459.0,-0.008038,22.8,21.8,0.007666,14.296,14.388
+8,2151691,100,vibrating_wire,foam,70,170,water,level,Geokon 4500AL,-18.31,6I.21516.91.HDD,intermediate,9414.0,-0.008142,22.8,21.5,0.008742,14.296,14.388
+9,2149882,100,vibrating_wire,none,70,170,water,level,Geokon 4500AL,-19.14,6I.21498.82.HDD,intermediate,9734.0,-0.008075,20.7,21.3,0.000675,14.602,14.389

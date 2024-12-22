@@ -6,8 +6,8 @@ import pandas as pd
 
 # Define phase 2 lookup table & conversions
 # From "2022-12-03_ Field Sheet for Deployment of Groundwater Equipment at NASA_Part_II.pdf" 
-def get_transducers_dataframe(paths):
-    if os.path.isfile(paths['transducersCSVfile']):
+def get_transducers_dataframe(paths, keep=False):
+    if os.path.isfile(paths['transducersCSVfile']) and keep==True:
         transducersDF = pd.read_csv(paths['transducersCSVfile'])
     else:
         
@@ -17,70 +17,70 @@ def get_transducers_dataframe(paths):
         # Shallow well (HOF-IW0006S)
         transducer1 = {'serial':'AirPressureShallow', 'Fs':100, 'sensor':'barometer','shielding':'none',
                'range_kPa_low':100,'range_kPa_high':100,'media':'air', 'type':'pressure', 
-               'model':'Keller 0507.01401.051311.07','set_depth_ft':3.81, 'id':'6S.02374.88.HDH'
+               'model':'Keller 0507.01401.051311.07','set_depth_ft':3.81, 'id':'6S.02374.88.HDH', 'well':'shallow'
               } # serial 237488
         transducers.append(transducer1)
         transducer2 = {'serial':'1226420', 'Fs':100, 'sensor':'vibrating_wire','shielding':'none',
                'range_kPa_low':70,'range_kPa_high':170,'media':'air', 'type':'level', 
                'model':'Geokon 4500AL','set_depth_ft':4.46,
                'dig0':9751, 'gf':-0.006458, 'tt':21.6, 'tt0':21.3, 'tf':-0.008795, 
-               'bp':0.0, 'bp0':14.298, 'id':'6S.12264.20.HDD'
+               'bp':0.0, 'bp0':14.298, 'id':'6S.12264.20.HDD', 'well':'shallow'
               }
         transducers.append(transducer2)
         transducer3 = {'serial':'1226423', 'Fs':20, 'sensor':'vibrating_wire','shielding':'foam',
                'range_kPa_low':70,'range_kPa_high':170,'media':'water', 'type':'level', 
                'model':'Geokon 4500AL','set_depth_ft':-5.83,
                'dig0':9605, 'gf':-0.006347, 'tt':21.6, 'tt0':22.2, 'tf':-0.004197, 
-               'bp':14.504, 'bp0':14.298, 'id':'6S.12264.23.BDD'
+               'bp':14.504, 'bp0':14.298, 'id':'6S.12264.23.BDD','well':'shallow'
               }
         transducers.append(transducer3)
         transducer4 = {'serial':'1226419', 'Fs':100, 'sensor':'vibrating_wire','shielding':'foam',
                'range_kPa_low':70,'range_kPa_high':170,'media':'water', 'type':'level', 
                'model':'Geokon 4500AL','set_depth_ft':-6.71,
                'dig0':10040, 'gf':-0.006441, 'tt':21.6, 'tt0':21.1, 'tf':-0.010870, 
-               'bp':14.504, 'bp0':14.298, 'id':'6S.12264.19.HDD'
+               'bp':14.504, 'bp0':14.298, 'id':'6S.12264.19.HDD','well':'shallow'
               }
         transducers.append(transducer4)
         transducer5 = {'serial':'1226421', 'Fs':100, 'sensor':'vibrating_wire','shielding':'none',
                'range_kPa_low':70,'range_kPa_high':170,'media':'water', 'type':'level', 
                'model':'Geokon 4500AL','set_depth_ft':-7.71,
                'dig0':9787, 'gf':-0.006724, 'tt':21.6, 'tt0':21.3, 'tf':-0.001145, 
-               'bp':14.504, 'bp0':14.298, 'id':'6S.12264.21.HDD'           
+               'bp':14.504, 'bp0':14.298, 'id':'6S.12264.21.HDD','well':'shallow'          
                }
         transducers.append(transducer5)
 
         # Intermediate well (HOF-IW00061)
         transducer6 = {'serial':'AirPressureDeep', 'Fs':100, 'sensor':'barometer','shielding':'none',
                'range_kPa_low':100,'range_kPa_high':100,'media':'air', 'type':'pressure', 
-               'model':'Keller 0507.01401.051311.07','set_depth_ft':3.86, 'id':'6I.0XXXX.XX.HDH'
+               'model':'Keller 0507.01401.051311.07','set_depth_ft':3.86, 'id':'6I.0XXXX.XX.HDH', 'well':'intermediate'
               }
         transducers.append(transducer6)
         transducer7 = {'serial':'1226429', 'Fs':100, 'sensor':'vibrating_wire','shielding':'none',
                'range_kPa_low':70,'range_kPa_high':170,'media':'air', 'type':'level', 
                'model':'Geokon 4500AL','set_depth_ft':4.11,
                'dig0':9800, 'gf':-0.006428, 'tt':22.6, 'tt0':21.6, 'tf':-0.002384, 
-               'bp':0.0, 'bp0':14.298, 'id':'6I.12264.29.HDD'          
+               'bp':0.0, 'bp0':14.298, 'id':'6I.12264.29.HDD','well':'intermediate'         
               }
         transducers.append(transducer7)
         transducer8 = {'serial':'2151692', 'Fs':20, 'sensor':'vibrating_wire','shielding':'foam',
                'range_kPa_low':70,'range_kPa_high':170,'media':'water', 'type':'level', 
                'model':'Geokon 4500AL','set_depth_ft':-9.14,
-               'dig0':9459, 'gf':-0.008038, 'tt':22.8, 'tt0':21.8, 'tf':-0.007666, 
-               'bp':14.296, 'bp0':14.388, 'id':'6I.21516.92.BDD'
+               'dig0':9459, 'gf':-0.008038, 'tt':22.8, 'tt0':21.8, 'tf':0.007666, 
+               'bp':14.296, 'bp0':14.388, 'id':'6I.21516.92.BDD','well':'intermediate'
               }
         transducers.append(transducer8)
         transducer9 = {'serial':'2151691', 'Fs':100, 'sensor':'vibrating_wire','shielding':'foam',
                'range_kPa_low':70,'range_kPa_high':170,'media':'water', 'type':'level', 
                'model':'Geokon 4500AL','set_depth_ft':-18.31,
-               'dig0':9414, 'gf':-0.008142, 'tt':22.8, 'tt0':21.5, 'tf':-0.008742, 
-               'bp':14.296, 'bp0':14.388, 'id':'6I.21516.91.HDD'
+               'dig0':9414, 'gf':-0.008142, 'tt':22.8, 'tt0':21.5, 'tf':0.008742, 
+               'bp':14.296, 'bp0':14.388, 'id':'6I.21516.91.HDD','well':'intermediate'
               }
         transducers.append(transducer9)
         transducer10 = {'serial':'2149882', 'Fs':100, 'sensor':'vibrating_wire','shielding':'none',
                'range_kPa_low':70,'range_kPa_high':170,'media':'water', 'type':'level', 
                'model':'Geokon 4500AL','set_depth_ft':-19.14,
-               'dig0':9734, 'gf':-0.008075, 'tt':20.7, 'tt0':21.3, 'tf':-0.000675, 
-               'bp':14.602, 'bp0':14.389, 'id':'6I.21498.82.HDD'
+               'dig0':9734, 'gf':-0.008075, 'tt':20.7, 'tt0':21.3, 'tf':0.000675, 
+               'bp':14.602, 'bp0':14.389, 'id':'6I.21498.82.HDD','well':'intermediate'
                }
         transducers.append(transducer10)
         transducersDF = pd.DataFrame(transducers)
