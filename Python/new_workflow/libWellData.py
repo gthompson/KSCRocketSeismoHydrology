@@ -1162,12 +1162,20 @@ def rawdf2psidf(barometricdf, transducersDF, temperatureCorrect=True, airpressur
                 psidf[col] = correctVibratingWireDigits(psidf[col], this_transducer, \
                                                               temperatureSeries=temperatureSeries, \
                                                                 airpressureSeries=airpressureSeries, \
-                                                                    depthCorrect=depthCorrect)
+                                                                    depthCorrect=depthCorrect)   
                 
     if bool_despike:
         despike(psidf, cliplevel=cliplevel)
     return psidf
-
+    
+def apply_dcshifts(df, xcorrdf, dcshiftdf):
+    best_xcorr_indexes = xcorrdf.iloc[:2, 2:].stack().idxmax()
+    dcshifts = dcshiftdf[best_xcorr_indexes[0]].to_dict()
+    dfshifted = df.copy()
+    for k, v in dcshifts.items():
+        print(f'Shifting {k} by {-v} PSI')
+        dfshifted[k] -= v
+    return dfshifted, dcshifts
 
 def psidf2passcalsdf():
     # convert every PSI column to Pa
@@ -1206,3 +1214,29 @@ def xcorr_columns(df, columns):
     display(xcorrdf_styled)
     display(dcshiftdf_styled) 
     return xcorrdf, dcshiftdf
+
+def psi2meters(df, watercolumns):
+    metersPerPSI = 0.703070
+    df2 = df.copy()
+    for col in df.columns:
+        if col in watercolumns:
+            df2[col] = -df2[col] * metersPerPSI
+    return df2
+
+
+def relative_to_set_depth(df, transducersDF, watercolumns):
+    df2 = df.copy()
+    for col in df.columns:
+        if col in watercolumns:    
+            this_transducer = LLE.get_transducer_metadata(col, transducersDF)
+            df2[col] = df2[col] - this_transducer['set_depth_ft']*0.3048
+    return df2
+
+
+def estimate_sensor_depths(df, watercolumns):
+    medians = correctedAllSensorsMeters[watercolumns].median()
+    df2 = df.copy()
+    for k,v in medians.items():
+        print(f'the estimated set_depth for sensor {k} is {v:.2f} m or {v/0.3048:.2f} ft')
+        df2[k] =  df[k] - v
+    return df2
