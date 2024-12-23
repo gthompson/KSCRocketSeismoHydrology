@@ -6,8 +6,8 @@ import pandas as pd
 
 # Define phase 2 lookup table & conversions
 # From "2022-12-03_ Field Sheet for Deployment of Groundwater Equipment at NASA_Part_II.pdf" 
-def get_transducers_dataframe(paths):
-    if os.path.isfile(paths['transducersCSVfile']):
+def get_transducers_dataframe(paths, keep=False):
+    if os.path.isfile(paths['transducersCSVfile']) and keep==True:
         transducersDF = pd.read_csv(paths['transducersCSVfile'])
     else:
         
@@ -17,70 +17,70 @@ def get_transducers_dataframe(paths):
         # Shallow well (HOF-IW0006S)
         transducer1 = {'serial':'AirPressureShallow', 'Fs':100, 'sensor':'barometer','shielding':'none',
                'range_kPa_low':100,'range_kPa_high':100,'media':'air', 'type':'pressure', 
-               'model':'Keller 0507.01401.051311.07','set_depth_ft':3.81, 'id':'6S.02374.88.HDH'
+               'model':'Keller 0507.01401.051311.07','set_depth_ft':3.81, 'id':'6S.02374.88.HDH', 'well':'shallow'
               } # serial 237488
         transducers.append(transducer1)
         transducer2 = {'serial':'1226420', 'Fs':100, 'sensor':'vibrating_wire','shielding':'none',
                'range_kPa_low':70,'range_kPa_high':170,'media':'air', 'type':'level', 
                'model':'Geokon 4500AL','set_depth_ft':4.46,
                'dig0':9751, 'gf':-0.006458, 'tt':21.6, 'tt0':21.3, 'tf':-0.008795, 
-               'bp':0.0, 'bp0':14.298, 'id':'6S.12264.20.HDD'
+               'bp':0.0, 'bp0':14.298, 'id':'6S.12264.20.HDD', 'well':'shallow'
               }
         transducers.append(transducer2)
         transducer3 = {'serial':'1226423', 'Fs':20, 'sensor':'vibrating_wire','shielding':'foam',
                'range_kPa_low':70,'range_kPa_high':170,'media':'water', 'type':'level', 
                'model':'Geokon 4500AL','set_depth_ft':-5.83,
                'dig0':9605, 'gf':-0.006347, 'tt':21.6, 'tt0':22.2, 'tf':-0.004197, 
-               'bp':14.504, 'bp0':14.298, 'id':'6S.12264.23.BDD'
+               'bp':14.504, 'bp0':14.298, 'id':'6S.12264.23.BDD','well':'shallow'
               }
         transducers.append(transducer3)
         transducer4 = {'serial':'1226419', 'Fs':100, 'sensor':'vibrating_wire','shielding':'foam',
                'range_kPa_low':70,'range_kPa_high':170,'media':'water', 'type':'level', 
                'model':'Geokon 4500AL','set_depth_ft':-6.71,
                'dig0':10040, 'gf':-0.006441, 'tt':21.6, 'tt0':21.1, 'tf':-0.010870, 
-               'bp':14.504, 'bp0':14.298, 'id':'6S.12264.19.HDD'
+               'bp':14.504, 'bp0':14.298, 'id':'6S.12264.19.HDD','well':'shallow'
               }
         transducers.append(transducer4)
         transducer5 = {'serial':'1226421', 'Fs':100, 'sensor':'vibrating_wire','shielding':'none',
                'range_kPa_low':70,'range_kPa_high':170,'media':'water', 'type':'level', 
                'model':'Geokon 4500AL','set_depth_ft':-7.71,
                'dig0':9787, 'gf':-0.006724, 'tt':21.6, 'tt0':21.3, 'tf':-0.001145, 
-               'bp':14.504, 'bp0':14.298, 'id':'6S.12264.21.HDD'           
+               'bp':14.504, 'bp0':14.298, 'id':'6S.12264.21.HDD','well':'shallow'          
                }
         transducers.append(transducer5)
 
         # Intermediate well (HOF-IW00061)
         transducer6 = {'serial':'AirPressureDeep', 'Fs':100, 'sensor':'barometer','shielding':'none',
                'range_kPa_low':100,'range_kPa_high':100,'media':'air', 'type':'pressure', 
-               'model':'Keller 0507.01401.051311.07','set_depth_ft':3.86, 'id':'6I.0XXXX.XX.HDH'
+               'model':'Keller 0507.01401.051311.07','set_depth_ft':3.86, 'id':'6I.0XXXX.XX.HDH', 'well':'intermediate'
               }
         transducers.append(transducer6)
         transducer7 = {'serial':'1226429', 'Fs':100, 'sensor':'vibrating_wire','shielding':'none',
                'range_kPa_low':70,'range_kPa_high':170,'media':'air', 'type':'level', 
                'model':'Geokon 4500AL','set_depth_ft':4.11,
                'dig0':9800, 'gf':-0.006428, 'tt':22.6, 'tt0':21.6, 'tf':-0.002384, 
-               'bp':0.0, 'bp0':14.298, 'id':'6I.12264.29.HDD'          
+               'bp':0.0, 'bp0':14.298, 'id':'6I.12264.29.HDD','well':'intermediate'         
               }
         transducers.append(transducer7)
         transducer8 = {'serial':'2151692', 'Fs':20, 'sensor':'vibrating_wire','shielding':'foam',
                'range_kPa_low':70,'range_kPa_high':170,'media':'water', 'type':'level', 
                'model':'Geokon 4500AL','set_depth_ft':-9.14,
-               'dig0':9459, 'gf':-0.008038, 'tt':22.8, 'tt0':21.8, 'tf':-0.007666, 
-               'bp':14.296, 'bp0':14.388, 'id':'6I.21516.92.BDD'
+               'dig0':9459, 'gf':-0.008038, 'tt':22.8, 'tt0':21.8, 'tf':0.007666, 
+               'bp':14.296, 'bp0':14.388, 'id':'6I.21516.92.BDD','well':'intermediate'
               }
         transducers.append(transducer8)
         transducer9 = {'serial':'2151691', 'Fs':100, 'sensor':'vibrating_wire','shielding':'foam',
                'range_kPa_low':70,'range_kPa_high':170,'media':'water', 'type':'level', 
                'model':'Geokon 4500AL','set_depth_ft':-18.31,
-               'dig0':9414, 'gf':-0.008142, 'tt':22.8, 'tt0':21.5, 'tf':-0.008742, 
-               'bp':14.296, 'bp0':14.388, 'id':'6I.21516.91.HDD'
+               'dig0':9414, 'gf':-0.008142, 'tt':22.8, 'tt0':21.5, 'tf':0.008742, 
+               'bp':14.296, 'bp0':14.388, 'id':'6I.21516.91.HDD','well':'intermediate'
               }
         transducers.append(transducer9)
         transducer10 = {'serial':'2149882', 'Fs':100, 'sensor':'vibrating_wire','shielding':'none',
                'range_kPa_low':70,'range_kPa_high':170,'media':'water', 'type':'level', 
                'model':'Geokon 4500AL','set_depth_ft':-19.14,
-               'dig0':9734, 'gf':-0.008075, 'tt':20.7, 'tt0':21.3, 'tf':-0.000675, 
-               'bp':14.602, 'bp0':14.389, 'id':'6I.21498.82.HDD'
+               'dig0':9734, 'gf':-0.008075, 'tt':20.7, 'tt0':21.3, 'tf':0.000675, 
+               'bp':14.602, 'bp0':14.389, 'id':'6I.21498.82.HDD','well':'intermediate'
                }
         transducers.append(transducer10)
         transducersDF = pd.DataFrame(transducers)
@@ -1031,3 +1031,127 @@ def plot_timediff(timedf_masked, title=None, outfile=None, ylim=None, maxsecs=No
     else:
         fh.show()
     return fh, ph
+
+# set standard temperature and pressure
+std_temperature = 20.0
+std_passcals = 101325
+pa2psi = 0.000145038
+std_psi = std_passcals * pa2psi
+
+def PaDiff1m(T=std_temperature):
+    PaPerM = 12.67 - 0.041*T
+    return PaPerM
+
+def correctForHeightAboveWaterFt(heightFt=0, T=std_temperature):
+    heightM = heightFt * 0.3048
+    psi_shift = (PaDiff1m(T=T) * heightM) * pa2psi
+    return psi_shift
+
+def correctForDepthBelowWaterFt(depthFt=0, T=std_temperature):
+    # correct up to 0m
+    psi_shift = depthFt/2.31
+    return psi_shift
+
+def correctVibratingWireDigits(rawSeries, this_transducer, temperatureSeries=None, airpressureSeries=None, depthCorrect=False):
+    # correct for gain
+    a = (rawSeries - this_transducer['dig0']) * this_transducer['gf']
+    tc = pd.Series()
+    apc = pd.Series()
+    psiShift = 0.0
+    # correct for temperature
+    if isinstance(temperatureSeries,pd.Series):
+        tc = (temperatureSeries - this_transducer['tt0']) * this_transducer['tf']
+        #print('- temperature correction')
+        #print(pd.Series(tc).describe())
+        a += tc
+    # correct for air pressure
+    if isinstance(airpressureSeries,pd.Series):
+        apc = (airpressureSeries - this_transducer['bp0'])
+        #print('- air pressure correction')
+        #print(pd.Series(apc).describe())
+        a -= apc
+    # correct for depth back to water surface
+    if depthCorrect:
+        psiShift = correctForDepthBelowWaterFt(depthFt=-this_transducer['set_depth_ft'])
+        #print(f'- depth correction {psiShift}')
+        a -= psiShift
+    print(f'T-correction={tc.mean()}, AP-correction={apc.mean()}, DCshift={-psiShift}')
+    return a   
+
+def get_transducer_metadata(serialnum, transducersDF):
+    this_transducer = None
+    subsetdf = transducersDF[(transducersDF['serial']) == serialnum]
+    if len(subsetdf.index)==1:
+        this_transducer = subsetdf.iloc[0].to_dict()    
+    return this_transducer
+
+
+def correctBarometricData(rawdf, barometricColumns, transducersDF, temperatureCorrect=True, heightCorrect=True, dcshifts=[14.42556,14.55743]):
+    # turn barometric columns from digits into PSI
+    barometricDF = rawdf.copy()
+    for colindex,col in enumerate(barometricColumns):
+        if col in barometricDF:
+            this_transducer = get_transducer_metadata(col, transducersDF)
+            if isinstance(col,str) and (col=='1226420' or col=='1226429'):
+                   
+                # get temperature series
+                tempcol = f'{col}_temp'
+                temperatureSeries=None
+                if temperatureCorrect:
+                    if tempcol in barometricDF.columns:
+                        temperatureSeries = barometricDF[tempcol]
+                        print(col, temperatureSeries)
+
+                barometricDF[col] = correctVibratingWireDigits(barometricDF[col], this_transducer, \
+                                                              temperatureSeries=temperatureSeries, \
+                                                                airpressureSeries=None, \
+                                                                    depthCorrect=False)        
+
+            # do height correction - we do this for analog barometers too
+            if heightCorrect:
+                psiShift = correctForHeightAboveWaterFt(heightFt=this_transducer['set_depth_ft'])
+                barometricDF[col] += psiShift
+
+            # do DCshift
+            if len(dcshifts)==len(barometricColumns):
+                barometricDF[col] += dcshifts[colindex]
+
+
+    return barometricDF
+
+def rawdf2psidf(barometricdf, transducersDF, temperatureCorrect=True, airpressureCorrect=True, depthCorrect=False):
+    psidf = barometricdf.copy()
+    #print('- Applying calibration equations')
+    for col in psidf.columns:
+        if isinstance(col,str) and (col[0:2]=='12' or col[0:2]=='21'):
+            if isinstance(col,str) and (col=='1226420' or col=='1226429'):
+                continue # we should already have corrected these to sea level PSI
+            this_transducer = get_transducer_metadata(col, transducersDF)
+            if this_transducer:
+
+                # get temperature series
+                tempcol = f'{col}_temp'
+                temperatureSeries=None
+                if tempcol in psidf.columns:
+                    temperatureSeries = psidf[tempcol]
+
+                # get airpressure series
+                airpressureSeries = None
+                if airpressureCorrect:
+                    '''
+                    if this_transducer['well']=='shallow':
+                        airpressureSeries = psidf['1226420']
+                    elif this_transducer['well']=='intermediate':
+                        airpressureSeries = psidf['1226429']
+                    '''
+                    airpressureSeries = psidf['1226429']
+                psidf[col] = correctVibratingWireDigits(psidf[col], this_transducer, \
+                                                              temperatureSeries=temperatureSeries, \
+                                                                airpressureSeries=airpressureSeries, \
+                                                                    depthCorrect=depthCorrect)
+    return psidf
+
+
+def psidf2passcalsdf():
+    # convert every PSI column to Pa
+    pass
