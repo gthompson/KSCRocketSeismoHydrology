@@ -26,7 +26,7 @@ from obspy.core import read, Stream, UTCDateTime
 #import FDSNtools
 #import wrappers
 import SDS
-import libWellData as LLE
+import Python.libWellData_wrong as LLE
 
 import libDatascopeGT
 from obspy.clients.filesystem.sds import Client

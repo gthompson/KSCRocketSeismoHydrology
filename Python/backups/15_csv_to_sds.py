@@ -12,7 +12,7 @@ import pandas as pd
 #import FDSNtools
 #import wrappers
 import SDS
-import libWellData as LLE
+import Python.libWellData_wrong as LLE
 
 dryrun = False
 

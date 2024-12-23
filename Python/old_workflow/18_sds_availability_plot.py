@@ -14,7 +14,7 @@ import os
 import pandas as pd
 from obspy import UTCDateTime
 import SDS
-import libWellData as LLE
+import Python.libWellData_wrong as LLE
 
 transducersDF = LLE.get_transducers_dataframe(paths)
 startover = True

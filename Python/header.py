@@ -62,7 +62,7 @@ if __name__ == "__main__":
     import FDSNtools
     import wrappers
     import SDS
-    import libWellData as LLE    
+    import Python.libWellData_wrong as LLE    
 
     
 # These are additional imports to make

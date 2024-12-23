@@ -19,7 +19,7 @@ from obspy.core import UTCDateTime, read
 #import FDSNtools
 #import wrappers
 #import SDS
-import libWellData as LLE
+import Python.libWellData_wrong as LLE
 
 HTML_DIR = '/var/www/html/thompsong/KSC_EROSION/EVENTS'
 PNG_DIR = os.path.join(HTML_DIR, 'images')

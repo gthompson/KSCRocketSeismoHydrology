@@ -16,7 +16,7 @@
 # raw data on April 1, 2022 from 16:10 to 16:40 UTC. Launch from SLC40 at 16:24 UTC, watched from Titusville
 import header
 paths = header.setup_environment()
-import libWellData as LLE
+import Python.libWellData_wrong as LLE
 
 # step to generate a list of TOB3 files and convert them with Python library or LoggerNet is omitted here
 

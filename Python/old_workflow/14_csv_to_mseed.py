@@ -11,7 +11,7 @@ import pandas as pd
 #import FDSNtools
 #import wrappers
 import SDS
-import libWellData as LLE
+import Python.libWellData_wrong as LLE
 
 # Parse lookuptable
 lookuptableDF = LLE.removed_unnamed_columns(pd.read_csv(paths['lookuptable']))
