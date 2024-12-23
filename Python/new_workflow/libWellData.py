@@ -1075,7 +1075,7 @@ def correctVibratingWireDigits(rawSeries, this_transducer, temperatureSeries=Non
         psiShift = correctForDepthBelowWaterFt(depthFt=-this_transducer['set_depth_ft'])
         #print(f'- depth correction {psiShift}')
         a -= psiShift
-    print(f'T-correction={tc.mean()}, AP-correction={apc.mean()}, DCshift={-psiShift}')
+    #print(f'T-correction={tc.mean()}, AP-correction={apc.mean()}, DCshift={-psiShift}')
     return a   
 
 def get_transducer_metadata(serialnum, transducersDF):
@@ -1086,7 +1086,7 @@ def get_transducer_metadata(serialnum, transducersDF):
     return this_transducer
 
 
-def correctBarometricData(rawdf, barometricColumns, transducersDF, temperatureCorrect=True, heightCorrect=True, dcshifts=[14.42556,14.55743]):
+def correctBarometricData(rawdf, barometricColumns, transducersDF, temperatureCorrect=True, heightCorrect=True, dcshifts=[]):
     # turn barometric columns from digits into PSI
     barometricDF = rawdf.copy()
     for colindex,col in enumerate(barometricColumns):
@@ -1100,21 +1100,21 @@ def correctBarometricData(rawdf, barometricColumns, transducersDF, temperatureCo
                 if temperatureCorrect:
                     if tempcol in barometricDF.columns:
                         temperatureSeries = barometricDF[tempcol]
-                        print(col, temperatureSeries)
+                        #print(col, temperatureSeries)
 
                 barometricDF[col] = correctVibratingWireDigits(barometricDF[col], this_transducer, \
                                                               temperatureSeries=temperatureSeries, \
                                                                 airpressureSeries=None, \
-                                                                    depthCorrect=False)        
+                                                                    depthCorrect=False)    
+                # do DCshift
+                if len(dcshifts)==len(barometricColumns):
+                    barometricDF[col] += dcshifts[colindex]    
 
             # do height correction - we do this for analog barometers too
             if heightCorrect:
                 psiShift = correctForHeightAboveWaterFt(heightFt=this_transducer['set_depth_ft'])
                 barometricDF[col] += psiShift
 
-            # do DCshift
-            if len(dcshifts)==len(barometricColumns):
-                barometricDF[col] += dcshifts[colindex]
 
 
     return barometricDF
@@ -1155,3 +1155,36 @@ def rawdf2psidf(barometricdf, transducersDF, temperatureCorrect=True, airpressur
 def psidf2passcalsdf():
     # convert every PSI column to Pa
     pass
+
+def round_datetime(df, freq='min', datetimecol='datetime', newcol=None):
+    # Round the sample time to nearest hour or minute or second
+    # Note this does not resample the data
+    newcoldict = {'h':'nearesthour', 'min':'nearestminute', 's':'nearestsecond'}
+    if not newcol:
+        newcol=newcoldict[freq]
+    if newcol:
+        df[newcol]=df[datetimecol].dt.round(freq) # freq can also be like 5min, 10s etc.
+
+def merge_and_drop(df1, df2, on='nearestminute'):
+    dfmerged = pd.merge(df1 , df2, on=on)
+    dfmerged = dfmerged.loc[:, ~dfmerged.columns.str.endswith('_x')]
+    dfmerged = dfmerged.loc[:, ~dfmerged.columns.str.endswith('_y')]
+    dfmerged = dfmerged.loc[:, ~dfmerged.columns.str.startswith('DynStdDev')] 
+    return dfmerged
+
+def xcorr_columns(df, columns):
+    # cross-correlate each column pair, and display as a formatted table
+    # also compute DC shifts required to align medians of each column
+    xcorr = np.ndarray(shape=(4,4), dtype=float)
+    dcshift = np.ndarray(shape=(4,4), dtype=float)
+    for i1,col1 in enumerate(columns):
+        for i2,col2 in enumerate(columns):
+            xcorr[i1,i2] = pd.Series.corr(df[col1], df[col2])
+            dcshift[i1,i2] = df[col1].median()-df[col2].median()
+    xcorrdf = pd.DataFrame(xcorr, index=columns, columns=columns)
+    xcorrdf_styled = xcorrdf.style.set_caption('Cross-correlation')
+    dcshiftdf = pd.DataFrame(dcshift, index=columns, columns=columns)
+    dcshiftdf_styled = dcshiftdf.style.set_caption('DC shifts')
+    display(xcorrdf_styled)
+    display(dcshiftdf_styled) 
+    return xcorrdf, dcshiftdf
