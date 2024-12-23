@@ -1032,6 +1032,11 @@ def plot_timediff(timedf_masked, title=None, outfile=None, ylim=None, maxsecs=No
         fh.show()
     return fh, ph
 
+##################################################
+# FUNCTIONS FOR NEW WORKFLOW
+##################################################
+
+
 # set standard temperature and pressure
 std_temperature = 20.0
 std_passcals = 101325
@@ -1078,6 +1083,13 @@ def correctVibratingWireDigits(rawSeries, this_transducer, temperatureSeries=Non
     #print(f'T-correction={tc.mean()}, AP-correction={apc.mean()}, DCshift={-psiShift}')
     return a   
 
+
+def despike(df, cliplevel=1.0): # assume PSI
+    for col in df.columns:
+        if isinstance(col,str) and (col[0:2]=='12' or col[0:2]=='21'):
+            m = df[col].median()
+            df[col] = df[col].clip(m-cliplevel,m+cliplevel)
+
 def get_transducer_metadata(serialnum, transducersDF):
     this_transducer = None
     subsetdf = transducersDF[(transducersDF['serial']) == serialnum]
@@ -1086,7 +1098,7 @@ def get_transducer_metadata(serialnum, transducersDF):
     return this_transducer
 
 
-def correctBarometricData(rawdf, barometricColumns, transducersDF, temperatureCorrect=True, heightCorrect=True, dcshifts=[]):
+def correctBarometricData(rawdf, barometricColumns, transducersDF, temperatureCorrect=True, heightCorrect=True, dcshifts={}, bool_despike=True, cliplevel=0.5):
     # turn barometric columns from digits into PSI
     barometricDF = rawdf.copy()
     for colindex,col in enumerate(barometricColumns):
@@ -1107,8 +1119,8 @@ def correctBarometricData(rawdf, barometricColumns, transducersDF, temperatureCo
                                                                 airpressureSeries=None, \
                                                                     depthCorrect=False)    
                 # do DCshift
-                if len(dcshifts)==len(barometricColumns):
-                    barometricDF[col] += dcshifts[colindex]    
+                if col in dcshifts.keys():
+                    barometricDF[col] -= dcshifts[col]    
 
             # do height correction - we do this for analog barometers too
             if heightCorrect:
@@ -1116,10 +1128,12 @@ def correctBarometricData(rawdf, barometricColumns, transducersDF, temperatureCo
                 barometricDF[col] += psiShift
 
 
+    if bool_despike:
+        despike(barometricDF, cliplevel=cliplevel)
 
     return barometricDF
 
-def rawdf2psidf(barometricdf, transducersDF, temperatureCorrect=True, airpressureCorrect=True, depthCorrect=False):
+def rawdf2psidf(barometricdf, transducersDF, temperatureCorrect=True, airpressureCorrect=True, depthCorrect=False, bool_despike=True, cliplevel=0.5):
     psidf = barometricdf.copy()
     #print('- Applying calibration equations')
     for col in psidf.columns:
@@ -1149,6 +1163,9 @@ def rawdf2psidf(barometricdf, transducersDF, temperatureCorrect=True, airpressur
                                                               temperatureSeries=temperatureSeries, \
                                                                 airpressureSeries=airpressureSeries, \
                                                                     depthCorrect=depthCorrect)
+                
+    if bool_despike:
+        despike(psidf, cliplevel=cliplevel)
     return psidf
 
 
@@ -1165,11 +1182,12 @@ def round_datetime(df, freq='min', datetimecol='datetime', newcol=None):
     if newcol:
         df[newcol]=df[datetimecol].dt.round(freq) # freq can also be like 5min, 10s etc.
 
-def merge_and_drop(df1, df2, on='nearestminute'):
+def merge_and_drop(df1, df2, on='nearestminute', drop=True):
     dfmerged = pd.merge(df1 , df2, on=on)
-    dfmerged = dfmerged.loc[:, ~dfmerged.columns.str.endswith('_x')]
-    dfmerged = dfmerged.loc[:, ~dfmerged.columns.str.endswith('_y')]
-    dfmerged = dfmerged.loc[:, ~dfmerged.columns.str.startswith('DynStdDev')] 
+    if drop:
+        dfmerged = dfmerged.loc[:, ~dfmerged.columns.str.endswith('_x')]
+        dfmerged = dfmerged.loc[:, ~dfmerged.columns.str.endswith('_y')]
+        dfmerged = dfmerged.loc[:, ~dfmerged.columns.str.startswith('DynStdDev')] 
     return dfmerged
 
 def xcorr_columns(df, columns):
