@@ -1228,13 +1228,13 @@ def relative_to_set_depth(df, transducersDF, watercolumns):
     df2 = df.copy()
     for col in df.columns:
         if col in watercolumns:    
-            this_transducer = LLE.get_transducer_metadata(col, transducersDF)
+            this_transducer = get_transducer_metadata(col, transducersDF)
             df2[col] = df2[col] - this_transducer['set_depth_ft']*0.3048
     return df2
 
 
 def estimate_sensor_depths(df, watercolumns):
-    medians = correctedAllSensorsMeters[watercolumns].median()
+    medians = df[watercolumns].median()
     df2 = df.copy()
     for k,v in medians.items():
         print(f'the estimated set_depth for sensor {k} is {v:.2f} m or {v/0.3048:.2f} ft')
