@@ -24,7 +24,7 @@ def get_transducers_dataframe(paths, keep=False):
                'range_kPa_low':70,'range_kPa_high':170,'media':'air', 'type':'level', 
                'model':'Geokon 4500AL','set_depth_ft':4.46,
                'dig0':9751, 'gf':-0.006458, 'tt':21.6, 'tt0':21.3, 'tf':-0.008795, 
-               'bp':0.0, 'bp0':14.298, 'id':'6S.12264.20.HDD', 'well':'shallow'
+               'bp':14.504, 'bp0':14.298, 'id':'6S.12264.20.HDD', 'well':'shallow'
               }
         transducers.append(transducer2)
         transducer3 = {'serial':'1226423', 'Fs':20, 'sensor':'vibrating_wire','shielding':'foam',
@@ -59,7 +59,7 @@ def get_transducers_dataframe(paths, keep=False):
                'range_kPa_low':70,'range_kPa_high':170,'media':'air', 'type':'level', 
                'model':'Geokon 4500AL','set_depth_ft':4.11,
                'dig0':9800, 'gf':-0.006428, 'tt':22.6, 'tt0':21.6, 'tf':-0.002384, 
-               'bp':0.0, 'bp0':14.298, 'id':'6I.12264.29.HDD','well':'intermediate'         
+               'bp':14.367, 'bp0':14.298, 'id':'6I.12264.29.HDD','well':'intermediate'         
               }
         transducers.append(transducer7)
         transducer8 = {'serial':'2151692', 'Fs':20, 'sensor':'vibrating_wire','shielding':'foam',
@@ -79,7 +79,7 @@ def get_transducers_dataframe(paths, keep=False):
         transducer10 = {'serial':'2149882', 'Fs':100, 'sensor':'vibrating_wire','shielding':'none',
                'range_kPa_low':70,'range_kPa_high':170,'media':'water', 'type':'level', 
                'model':'Geokon 4500AL','set_depth_ft':-19.14,
-               'dig0':9734, 'gf':-0.008075, 'tt':20.7, 'tt0':21.3, 'tf':0.000675, 
+               'dig0':9734, 'gf':-0.008075, 'tt':20.7, 'tt0':21.3, 'tf':0.0006752, 
                'bp':14.602, 'bp0':14.389, 'id':'6I.21498.82.HDD','well':'intermediate'
                }
         transducers.append(transducer10)
