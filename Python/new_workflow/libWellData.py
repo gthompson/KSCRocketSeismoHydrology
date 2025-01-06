@@ -3,6 +3,7 @@ import numpy as np
 from obspy import UTCDateTime, Stream, Trace
 import os
 import pandas as pd
+import glob
 
 # Define phase 2 lookup table & conversions
 # From "2022-12-03_ Field Sheet for Deployment of Groundwater Equipment at NASA_Part_II.pdf" 
@@ -1057,9 +1058,12 @@ def correctForDepthBelowWaterFt(depthFt=0, T=std_temperature):
     psi_shift = depthFt/2.31
     return psi_shift
 
-def correctVibratingWireDigits(rawSeries, this_transducer, temperatureSeries=None, airpressureSeries=None, depthCorrect=False):
+def correctVibratingWireDigits(rawSeries, this_transducer, calibrationCorrect=True, temperatureSeries=None, airpressureSeries=None, depthCorrect=False):
     # correct for gain
-    a = (rawSeries - this_transducer['dig0']) * this_transducer['gf']
+    if calibrationCorrect:
+        a = (rawSeries - this_transducer['dig0']) * this_transducer['gf']
+    else: # assume already calibrated
+        a = rawSeries
     tc = pd.Series()
     apc = pd.Series()
     psiShift = 0.0
@@ -1098,7 +1102,7 @@ def get_transducer_metadata(serialnum, transducersDF):
     return this_transducer
 
 
-def correctBarometricData(rawdf, barometricColumns, transducersDF, temperatureCorrect=True, heightCorrect=True, dcshifts={}, bool_despike=True, cliplevel=0.5):
+def correctBarometricData(rawdf, barometricColumns, transducersDF, calibrationCorrect=True, temperatureCorrect=True, heightCorrect=True, dcshifts={}, bool_despike=True, cliplevel=0.5):
     # turn barometric columns from digits into PSI
     barometricDF = rawdf.copy()
     for colindex,col in enumerate(barometricColumns):
@@ -1115,9 +1119,10 @@ def correctBarometricData(rawdf, barometricColumns, transducersDF, temperatureCo
                         #print(col, temperatureSeries)
 
                 barometricDF[col] = correctVibratingWireDigits(barometricDF[col], this_transducer, \
-                                                              temperatureSeries=temperatureSeries, \
+                                                                calibrationCorrect=calibrationCorrect, \
+                                                                temperatureSeries=temperatureSeries, \
                                                                 airpressureSeries=None, \
-                                                                    depthCorrect=False)    
+                                                                depthCorrect=False)    
                 # do DCshift
                 if col in dcshifts.keys():
                     barometricDF[col] -= dcshifts[col]    
@@ -1133,7 +1138,7 @@ def correctBarometricData(rawdf, barometricColumns, transducersDF, temperatureCo
 
     return barometricDF
 
-def rawdf2psidf(barometricdf, transducersDF, temperatureCorrect=True, airpressureCorrect=True, depthCorrect=False, bool_despike=True, cliplevel=0.5):
+def rawdf2psidf(barometricdf, transducersDF, temperatureCorrect=True, airpressureColumn=None, depthCorrect=False, bool_despike=True, cliplevel=0.5):
     psidf = barometricdf.copy()
     #print('- Applying calibration equations')
     for col in psidf.columns:
@@ -1146,19 +1151,15 @@ def rawdf2psidf(barometricdf, transducersDF, temperatureCorrect=True, airpressur
                 # get temperature series
                 tempcol = f'{col}_temp'
                 temperatureSeries=None
-                if tempcol in psidf.columns:
+                if tempcol in psidf.columns and temperatureCorrect:
                     temperatureSeries = psidf[tempcol]
 
                 # get airpressure series
                 airpressureSeries = None
-                if airpressureCorrect:
-                    '''
-                    if this_transducer['well']=='shallow':
-                        airpressureSeries = psidf['1226420']
-                    elif this_transducer['well']=='intermediate':
-                        airpressureSeries = psidf['1226429']
-                    '''
-                    airpressureSeries = psidf['1226429']
+                if airpressureColumn:
+                    airpressureSeries = psidf[airpressureColumn]
+
+                # apply corrections
                 psidf[col] = correctVibratingWireDigits(psidf[col], this_transducer, \
                                                               temperatureSeries=temperatureSeries, \
                                                                 airpressureSeries=airpressureSeries, \
@@ -1170,6 +1171,7 @@ def rawdf2psidf(barometricdf, transducersDF, temperatureCorrect=True, airpressur
     
 def apply_dcshifts(df, xcorrdf, dcshiftdf):
     best_xcorr_indexes = xcorrdf.iloc[:2, 2:].stack().idxmax()
+    print(best_xcorr_indexes)
     dcshifts = dcshiftdf[best_xcorr_indexes[0]].to_dict()
     dfshifted = df.copy()
     for k, v in dcshifts.items():
@@ -1190,8 +1192,11 @@ def round_datetime(df, freq='min', datetimecol='datetime', newcol=None):
     if newcol:
         df[newcol]=df[datetimecol].dt.round(freq) # freq can also be like 5min, 10s etc.
 
-def merge_and_drop(df1, df2, on='nearestminute', drop=True):
-    dfmerged = pd.merge(df1 , df2, on=on)
+def merge_and_drop(df1, df2, on='nearestminute', drop=True, how='inner'):
+    if isinstance(df2, pd.DataFrame):
+        dfmerged = pd.merge(df1 , df2, on=on, how=how)
+    else:
+        dfmerged = df1.copy()
     if drop:
         dfmerged = dfmerged.loc[:, ~dfmerged.columns.str.endswith('_x')]
         dfmerged = dfmerged.loc[:, ~dfmerged.columns.str.endswith('_y')]
@@ -1234,9 +1239,189 @@ def relative_to_set_depth(df, transducersDF, watercolumns):
 
 
 def estimate_sensor_depths(df, watercolumns):
-    medians = df[watercolumns].median()
-    df2 = df.copy()
-    for k,v in medians.items():
-        print(f'the estimated set_depth for sensor {k} is {v:.2f} m or {v/0.3048:.2f} ft')
-        df2[k] =  df[k] - v
-    return df2
+    commoncols = list(set(watercolumns) & set(df.columns))
+    medians = pd.Series()
+    if len(commoncols)>0:
+        medians = df[commoncols].median() # expression chooses columns common to both, so it doesn't crash if any missing
+        df2 = df.copy()
+        for k,v in medians.items():
+            print(f'the estimated set_depth for sensor {k} is {v:.2f} m or {v/0.3048:.2f} ft')
+            df2[k] =  df[k] - v
+    return df2, medians
+
+def qc_dataframe(df, remove_duplicates=False, keep='last'):
+    '''
+    Here we remove any Null rows
+    We also remove any duplicate times - using the first entry
+    This means if time is out of order and loops back, there could be some corruption in the data
+    We could potentially alleviate bad times via resampling at 10ms/100hz
+    ''' 
+    if 'TIMESTAMP' in df.columns:
+        df['datetime'] = pd.to_datetime(df['TIMESTAMP'])
+        df.drop(['TIMESTAMP', 'RECORD'], axis=1, inplace=True)
+        if remove_duplicates:
+            df = df.sort_values(by='datetime')
+            df = df[~df['datetime'].duplicated(keep=keep)] # keep first or last  
+
+    df.dropna(how='all', axis=1, inplace=True) 
+    df.drop(df.columns[df.columns.str.contains('unnamed',case = False)],axis = 1, inplace = True)
+
+    # remove any duplicates in datetime column
+    '''
+    print(df.columns)
+    if 'datetime' in df.columns
+    df.set_index('datetime', inplace=True)
+    df = df[~df.index.duplicated(keep='first')]  
+    df.reset_index(inplace=True)    
+    '''
+
+def split_by_subdir(dfall2, verbose=False):
+    all_dataframes = {}
+    for subdir in ['Baro', '20hz', '100hz']:
+        print(subdir)
+        dfsub = dfall2.copy()[dfall2['subdir']==subdir]
+        if verbose:
+            print('**********\nDisplaying ',subdir)
+            display(dfsub)
+        qc_dataframe(dfsub)
+        all_dataframes[subdir] = dfsub.copy()
+        del dfsub
+    return all_dataframes
+
+def trim(df, starttime, endtime):
+    return df.query(f"datetime > {starttime.strftime('%Y%m%d%H%M%S')} & datetime < {endtime.strftime('%Y%m%d%H%M%S')}")
+
+def get_raw_data(dfall, starttime, endtime, INPUTDIR, save=False):
+    startt = starttime.strftime('%Y-%m-%d')
+    allcsvfiles = glob.glob(startt+'*.csv')
+    dfdata = {}
+    if len(allcsvfiles)>0:
+        print('existing day files found - loading these is faster')
+        for csvfile in allcsvfiles:
+            k = csvfile.split(f'{startt}_')[1].replace('.csv','')
+            print(f'reading {csvfile} into dfdata[{k}]')
+            dfdata[k] = pd.read_csv(csvfile, index_col=None)
+    else:
+            
+        dfday = trim(dfall, starttime=starttime, endtime=endtime)
+        
+        # load and plot all these files
+        for index, row in dfday.iterrows():
+            subdir = row['subdir'].lower()
+            fullpath = os.path.join(INPUTDIR, str(row['uploaddate']), row['subdir'], row['basename'])
+            if not subdir in dfdata:
+                dfdata[subdir] = pd.DataFrame()
+            print(fullpath)
+            if os.path.isfile(fullpath):
+                print('- loading')
+                thisdf = pd.read_csv(fullpath)
+                qc_dataframe(thisdf)
+                dfdata[subdir] = pd.concat([dfdata[subdir], thisdf])
+                #display(dfdata[subdir])
+            else:
+                print('- not found')
+        if save:
+            for k in dfdata.keys():
+                csvfile = f'{startt}_{k}.csv'
+                print(f'saving to {csvfile}')
+                dfdata[k].to_csv(csvfile, index=None)
+
+    return dfdata
+
+
+def process_day(dfsummary, starttime, INPUTDIR, transducersDF):
+
+    ############### 0. Set up #####################
+    # set default outputs
+    dcshifts = dict()
+    sensor_depths = pd.Series()
+
+    # set endtime 24 hours after starttime
+    endtime = starttime + pd.Timedelta(hours=24)
+
+    # identify dataframe columns for transducers in air and water
+    aircolumns = ['AirPressureShallow', 'AirPressureDeep', '1226420', '1226429']
+    watercolumns = ['1226419', '1226421', '2151691', '2149882', '1226423', '2151692']
+
+
+    ############### Processing #####################
+    # 1. Load data from starttime to endtime
+    dfday = get_raw_data(dfsummary, starttime, endtime, INPUTDIR) # a dict with 3 dataframes corresponding to 'baro', '20hz', and '100hz'
+
+    # 2. Merge the 100hz and baro data, which are both at 100hz
+    if '100hz' in dfday:
+        if 'baro' in dfday:
+            dfmerged = merge_and_drop(dfday['100hz'], dfday['baro'], on='datetime', drop=True, how='outer')
+        else:
+            print('no baro')
+            dfmerged = merge_and_drop(dfday['100hz'], None, on='datetime', drop=True)
+    elif 'baro' in dfday:
+        print('no 100hz')
+        dfmerged = merge_and_drop(dfday['baro'], None, on='datetime', drop=True)
+    else:
+        print('No 100hz, no baro')
+        return None, dcshifts, sensor_depths
+
+    # Choose air pressure column
+    apcol=None
+    for col in aircolumns:
+        if col=='1226420':
+            continue
+        if col in dfmerged.columns:
+            apcol = col
+            break
+    print(f'Choosing {apcol} as air pressure column')
+    if not apcol:
+        return None, dcshifts, sensor_depths
+
+    # 3. merge the 20hz data via linear interpolation
+    if '20hz' in dfday:
+        df = dfday['20hz'].set_index('datetime')
+        #df = df.asfreq(freq='10ms', method='ffill') # fills with most recent value
+        try:
+            df = df.resample('10ms').interpolate()
+        except: # duplicates in index, but should not need this now because incorporated into qc_dataframe
+            df = df[~df.index.duplicated(keep='first')]  
+            df = df.resample('10ms').interpolate()
+        df.reset_index(inplace=True)
+        dfmerged = merge_and_drop(dfmerged, df, on='datetime', drop=True, how='outer')
+    else:
+        print('no 20hz')
+
+    ############## this is the place to save raw data for this time period, if at all ########################
+    print('Columns in dfmerged: \n', dfmerged.columns)
+
+    # 4. Correct analog and digital air column transducers for calibration, elevation above water
+    dfheightcorrected = correctBarometricData(dfmerged, aircolumns, transducersDF, temperatureCorrect=False, heightCorrect=True)
+
+    if '100hz' in dfday: 
+        # 5. (Correlate and) compare medians to find best DC shifts
+        xcorrdf, dcshiftdf = xcorr_columns(dfheightcorrected, aircolumns)
+
+        # 6. Apply these DC shifts to digital barometer columns only
+        dfshifted, dcshifts = apply_dcshifts(dfheightcorrected, xcorrdf, dcshiftdf)
+
+        # 7. Correct digital water column transducers for calibration and barometric pressure
+        correctedAllSensorsPSI = rawdf2psidf(dfshifted, transducersDF, temperatureCorrect=False, airpressureColumn=apcol, depthCorrect=False)        
+
+    elif '20hz' in dfday:
+        # 7. Correct digital water column transducers for calibration and barometric pressure
+        correctedAllSensorsPSI = rawdf2psidf(dfheightcorrected, transducersDF, temperatureCorrect=False, airpressureColumn=apcol, depthCorrect=False)
+
+    else:
+        return dfheightcorrected, dcshifts, sensor_depths # height corrected analog barometers only
+
+
+    # 8: convert to water levels in meters
+    correctedAllSensorsMeters = psi2meters(correctedAllSensorsPSI, watercolumns)
+
+    # 9: convert to water levels in meters relative to the set depth measured by Steve Krupa
+    #relativeAllSensorsMeters = relative_to_set_depth(correctedAllSensorsMeters, transducersDF, watercolumns)
+
+    # 10: estimate correct set depths from median of each, and shift by this amount
+    estimatedAllSensorsMeters, sensor_depths = estimate_sensor_depths(correctedAllSensorsMeters, watercolumns)  
+
+    # Step 11 is arguably to go back to step 7 and correct for estimated sensor depths
+
+    return correctedAllSensorsPSI, dcshifts, sensor_depths
+ 
