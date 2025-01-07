@@ -15,73 +15,75 @@ def get_transducers_dataframe(paths, keep=False):
         phase2_startdate = UTCDateTime(2022,7,21,14,7,0)
         transducers = []
 
+        # 20250107: adding tmean values determined from 04_compare_barometers. Depth dependent average temperatures
+
         # Shallow well (HOF-IW0006S)
         transducer1 = {'serial':'AirPressureShallow', 'Fs':100, 'sensor':'barometer','shielding':'none',
                'range_kPa_low':100,'range_kPa_high':100,'media':'air', 'type':'pressure', 
-               'model':'Keller 0507.01401.051311.07','set_depth_ft':3.81, 'id':'6S.02374.88.HDH', 'well':'shallow'
+               'model':'Keller 0507.01401.051311.07','set_depth_ft':3.81, 'id':'6S.02374.88.HDH', 'well':'shallow', 'tmean':None
               } # serial 237488
         transducers.append(transducer1)
         transducer2 = {'serial':'1226420', 'Fs':100, 'sensor':'vibrating_wire','shielding':'none',
                'range_kPa_low':70,'range_kPa_high':170,'media':'air', 'type':'level', 
                'model':'Geokon 4500AL','set_depth_ft':4.46,
                'dig0':9751, 'gf':-0.006458, 'tt':21.6, 'tt0':21.3, 'tf':-0.008795, 
-               'bp':14.504, 'bp0':14.298, 'id':'6S.12264.20.HDD', 'well':'shallow'
+               'bp':14.504, 'bp0':14.298, 'id':'6S.12264.20.HDD', 'well':'shallow', 'tmean':30.68
               }
         transducers.append(transducer2)
         transducer3 = {'serial':'1226423', 'Fs':20, 'sensor':'vibrating_wire','shielding':'foam',
                'range_kPa_low':70,'range_kPa_high':170,'media':'water', 'type':'level', 
                'model':'Geokon 4500AL','set_depth_ft':-5.83,
                'dig0':9605, 'gf':-0.006347, 'tt':21.6, 'tt0':22.2, 'tf':-0.004197, 
-               'bp':14.504, 'bp0':14.298, 'id':'6S.12264.23.BDD','well':'shallow'
+               'bp':14.504, 'bp0':14.298, 'id':'6S.12264.23.BDD','well':'shallow', 'tmean':28.40
               }
         transducers.append(transducer3)
         transducer4 = {'serial':'1226419', 'Fs':100, 'sensor':'vibrating_wire','shielding':'foam',
                'range_kPa_low':70,'range_kPa_high':170,'media':'water', 'type':'level', 
                'model':'Geokon 4500AL','set_depth_ft':-6.71,
                'dig0':10040, 'gf':-0.006441, 'tt':21.6, 'tt0':21.1, 'tf':-0.010870, 
-               'bp':14.504, 'bp0':14.298, 'id':'6S.12264.19.HDD','well':'shallow'
+               'bp':14.504, 'bp0':14.298, 'id':'6S.12264.19.HDD','well':'shallow', 'tmean':27.57
               }
         transducers.append(transducer4)
         transducer5 = {'serial':'1226421', 'Fs':100, 'sensor':'vibrating_wire','shielding':'none',
                'range_kPa_low':70,'range_kPa_high':170,'media':'water', 'type':'level', 
                'model':'Geokon 4500AL','set_depth_ft':-7.71,
                'dig0':9787, 'gf':-0.006724, 'tt':21.6, 'tt0':21.3, 'tf':-0.001145, 
-               'bp':14.504, 'bp0':14.298, 'id':'6S.12264.21.HDD','well':'shallow'          
+               'bp':14.504, 'bp0':14.298, 'id':'6S.12264.21.HDD','well':'shallow': 'tmean':27.60          
                }
         transducers.append(transducer5)
 
         # Intermediate well (HOF-IW00061)
         transducer6 = {'serial':'AirPressureDeep', 'Fs':100, 'sensor':'barometer','shielding':'none',
                'range_kPa_low':100,'range_kPa_high':100,'media':'air', 'type':'pressure', 
-               'model':'Keller 0507.01401.051311.07','set_depth_ft':3.86, 'id':'6I.0XXXX.XX.HDH', 'well':'intermediate'
+               'model':'Keller 0507.01401.051311.07','set_depth_ft':3.86, 'id':'6I.0XXXX.XX.HDH', 'well':'intermediate', 'tmean':None
               }
         transducers.append(transducer6)
         transducer7 = {'serial':'1226429', 'Fs':100, 'sensor':'vibrating_wire','shielding':'none',
                'range_kPa_low':70,'range_kPa_high':170,'media':'air', 'type':'level', 
                'model':'Geokon 4500AL','set_depth_ft':4.11,
                'dig0':9800, 'gf':-0.006428, 'tt':22.6, 'tt0':21.6, 'tf':-0.002384, 
-               'bp':14.367, 'bp0':14.298, 'id':'6I.12264.29.HDD','well':'intermediate'         
+               'bp':14.367, 'bp0':14.298, 'id':'6I.12264.29.HDD','well':'intermediate', 'tmean':30.60         
               }
         transducers.append(transducer7)
         transducer8 = {'serial':'2151692', 'Fs':20, 'sensor':'vibrating_wire','shielding':'foam',
                'range_kPa_low':70,'range_kPa_high':170,'media':'water', 'type':'level', 
                'model':'Geokon 4500AL','set_depth_ft':-9.14,
                'dig0':9459, 'gf':-0.008038, 'tt':22.8, 'tt0':21.8, 'tf':0.007666, 
-               'bp':14.296, 'bp0':14.388, 'id':'6I.21516.92.BDD','well':'intermediate'
+               'bp':14.296, 'bp0':14.388, 'id':'6I.21516.92.BDD','well':'intermediate', 'tmean':25.88
               }
         transducers.append(transducer8)
         transducer9 = {'serial':'2151691', 'Fs':100, 'sensor':'vibrating_wire','shielding':'foam',
                'range_kPa_low':70,'range_kPa_high':170,'media':'water', 'type':'level', 
                'model':'Geokon 4500AL','set_depth_ft':-18.31,
                'dig0':9414, 'gf':-0.008142, 'tt':22.8, 'tt0':21.5, 'tf':0.008742, 
-               'bp':14.296, 'bp0':14.388, 'id':'6I.21516.91.HDD','well':'intermediate'
+               'bp':14.296, 'bp0':14.388, 'id':'6I.21516.91.HDD','well':'intermediate', 'tmean':25.70
               }
         transducers.append(transducer9)
         transducer10 = {'serial':'2149882', 'Fs':100, 'sensor':'vibrating_wire','shielding':'none',
                'range_kPa_low':70,'range_kPa_high':170,'media':'water', 'type':'level', 
                'model':'Geokon 4500AL','set_depth_ft':-19.14,
                'dig0':9734, 'gf':-0.008075, 'tt':20.7, 'tt0':21.3, 'tf':0.0006752, 
-               'bp':14.602, 'bp0':14.389, 'id':'6I.21498.82.HDD','well':'intermediate'
+               'bp':14.602, 'bp0':14.389, 'id':'6I.21498.82.HDD','well':'intermediate', 'tmean':25.96
                }
         transducers.append(transducer10)
         transducersDF = pd.DataFrame(transducers)
@@ -1068,7 +1070,7 @@ def correctVibratingWireDigits(rawSeries, this_transducer, calibrationCorrect=Tr
     apc = pd.Series()
     psiShift = 0.0
     # correct for temperature
-    if isinstance(temperatureSeries,pd.Series):
+    if isinstance(temperatureSeries,pd.Series) or isinstance(temperatureSeries, float):
         tc = (temperatureSeries - this_transducer['tt0']) * this_transducer['tf']
         #print('- temperature correction')
         #print(pd.Series(tc).describe())
@@ -1101,6 +1103,17 @@ def get_transducer_metadata(serialnum, transducersDF):
         this_transducer = subsetdf.iloc[0].to_dict()    
     return this_transducer
 
+def get_temperature_data(df, col, temperatureCorrect, this_transducer):
+    # get temperature series
+    tempcol = f'{col}_temp'
+    temperatureSeries=None
+    if temperatureCorrect:
+        if tempcol in df.columns:
+            temperatureSeries = df[tempcol].fillna(this_transducer['tmean']) # fill any nans
+        else:
+            temperatureSeries = this_transducer['tmean'] # just use average temperature determined in 04_compare_barometers, which was for 07/21-08/03 period
+    return temperatureSeries
+
 
 def correctBarometricData(rawdf, barometricColumns, transducersDF, calibrationCorrect=True, temperatureCorrect=True, heightCorrect=True, dcshifts={}, bool_despike=True, cliplevel=0.5):
     # turn barometric columns from digits into PSI
@@ -1111,13 +1124,9 @@ def correctBarometricData(rawdf, barometricColumns, transducersDF, calibrationCo
             if isinstance(col,str) and (col=='1226420' or col=='1226429'):
                    
                 # get temperature series
-                tempcol = f'{col}_temp'
-                temperatureSeries=None
-                if temperatureCorrect:
-                    if tempcol in barometricDF.columns:
-                        temperatureSeries = barometricDF[tempcol]
-                        #print(col, temperatureSeries)
+                temperatureSeries = get_temperature_data(barometricDF, col, temperatureCorrect, this_transducer)
 
+                # apply calibration equation
                 barometricDF[col] = correctVibratingWireDigits(barometricDF[col], this_transducer, \
                                                                 calibrationCorrect=calibrationCorrect, \
                                                                 temperatureSeries=temperatureSeries, \
@@ -1149,17 +1158,14 @@ def rawdf2psidf(barometricdf, transducersDF, temperatureCorrect=True, airpressur
             if this_transducer:
 
                 # get temperature series
-                tempcol = f'{col}_temp'
-                temperatureSeries=None
-                if tempcol in psidf.columns and temperatureCorrect:
-                    temperatureSeries = psidf[tempcol]
+                temperatureSeries = get_temperature_data(psidf, col, temperatureCorrect, this_transducer)
 
                 # get airpressure series
                 airpressureSeries = None
                 if airpressureColumn:
                     airpressureSeries = psidf[airpressureColumn]
 
-                # apply corrections
+                # apply calibration equation
                 psidf[col] = correctVibratingWireDigits(psidf[col], this_transducer, \
                                                               temperatureSeries=temperatureSeries, \
                                                                 airpressureSeries=airpressureSeries, \
@@ -1169,10 +1175,13 @@ def rawdf2psidf(barometricdf, transducersDF, temperatureCorrect=True, airpressur
         despike(psidf, cliplevel=cliplevel)
     return psidf
     
-def apply_dcshifts(df, xcorrdf, dcshiftdf):
-    best_xcorr_indexes = xcorrdf.iloc[:2, 2:].stack().idxmax()
-    print(best_xcorr_indexes)
-    dcshifts = dcshiftdf[best_xcorr_indexes[0]].to_dict()
+def apply_dcshifts(df, xcorrdf, dcshiftdf, force=False): # here could force AirPressureShallow
+    if force:
+        dcshifts = dcshiftdf.iloc[0].to_dict()
+    else:
+        best_xcorr_indexes = xcorrdf.iloc[:2, 2:].stack().idxmax()
+        #print(best_xcorr_indexes)
+        dcshifts = dcshiftdf[best_xcorr_indexes[0]].to_dict()
     dfshifted = df.copy()
     for k, v in dcshifts.items():
         print(f'Shifting {k} by {-v} PSI')
@@ -1260,20 +1269,24 @@ def qc_dataframe(df, remove_duplicates=False, keep='last'):
         df['datetime'] = pd.to_datetime(df['TIMESTAMP'])
         df.drop(['TIMESTAMP', 'RECORD'], axis=1, inplace=True)
         if remove_duplicates:
-            df = df.sort_values(by='datetime')
-            df = df[~df['datetime'].duplicated(keep=keep)] # keep first or last  
+            df.sort_values(by='datetime', inplace=True)
+            df.drop_duplicates(subset=['datetime'], keep='last')
+            #df = df[~df['datetime'].duplicated(keep=keep)] # keep first or last  
 
-    df.dropna(how='all', axis=1, inplace=True) 
-    df.drop(df.columns[df.columns.str.contains('unnamed',case = False)],axis = 1, inplace = True)
+    df.dropna(how='all', axis=1, inplace=True) # drop empty rows
+    df.drop(df.columns[df.columns.str.contains('unnamed',case = False)],axis = 1, inplace = True) # drop unnamed columns
 
-    # remove any duplicates in datetime column
-    '''
-    print(df.columns)
-    if 'datetime' in df.columns
-    df.set_index('datetime', inplace=True)
-    df = df[~df.index.duplicated(keep='first')]  
-    df.reset_index(inplace=True)    
-    '''
+    # rename thermal columns
+    if 'Therm(2)' in df.columns:
+        count=0
+        for col in df.columns:
+            if col[0:2]=='12' or col[0:2]=='21':
+                count+=1
+                oldcol = f'Therm({count})'
+                if oldcol in df.columns:
+                    newcol = f'{col}_temp'
+                    df.rename(columns={oldcol:newcol}, inplace=True)
+
 
 def split_by_subdir(dfall2, verbose=False):
     all_dataframes = {}
@@ -1291,16 +1304,16 @@ def split_by_subdir(dfall2, verbose=False):
 def trim(df, starttime, endtime):
     return df.query(f"datetime > {starttime.strftime('%Y%m%d%H%M%S')} & datetime < {endtime.strftime('%Y%m%d%H%M%S')}")
 
-def get_raw_data(dfall, starttime, endtime, INPUTDIR, save=False):
+def get_raw_data(dfall, starttime, endtime, INPUTDIR, save=True):
     startt = starttime.strftime('%Y-%m-%d')
-    allcsvfiles = glob.glob(startt+'*.csv')
     dfdata = {}
-    if len(allcsvfiles)>0:
-        print('existing day files found - loading these is faster')
-        for csvfile in allcsvfiles:
+    allpklfiles = glob.glob('raw_'+startt+'*.pkl')
+    if len(allpklfiles)>0:
+        print('existing day pickle files found - loading these is faster')
+        for pklfile in allpklfiles:
             k = csvfile.split(f'{startt}_')[1].replace('.csv','')
-            print(f'reading {csvfile} into dfdata[{k}]')
-            dfdata[k] = pd.read_csv(csvfile, index_col=None)
+            print(f'reading {pklfile} into dfdata[{k}]')
+            dfdata[k] = pd.read_pickle(pklfile)
     else:
             
         dfday = trim(dfall, starttime=starttime, endtime=endtime)
@@ -1322,9 +1335,9 @@ def get_raw_data(dfall, starttime, endtime, INPUTDIR, save=False):
                 print('- not found')
         if save:
             for k in dfdata.keys():
-                csvfile = f'{startt}_{k}.csv'
-                print(f'saving to {csvfile}')
-                dfdata[k].to_csv(csvfile, index=None)
+                pklfile = f'raw_{startt}_{k}.pkl'
+                print(f'saving to {pklfile}')
+                dfdata[k].to_pickle(pklfile)
 
     return dfdata
 
@@ -1392,6 +1405,7 @@ def process_day(dfsummary, starttime, INPUTDIR, transducersDF):
     print('Columns in dfmerged: \n', dfmerged.columns)
 
     # 4. Correct analog and digital air column transducers for calibration, elevation above water
+    # NOTE: Already temperature correction works, we only have temperature data from 07/21-08/03
     dfheightcorrected = correctBarometricData(dfmerged, aircolumns, transducersDF, temperatureCorrect=False, heightCorrect=True)
 
     if '100hz' in dfday: 
@@ -1399,7 +1413,7 @@ def process_day(dfsummary, starttime, INPUTDIR, transducersDF):
         xcorrdf, dcshiftdf = xcorr_columns(dfheightcorrected, aircolumns)
 
         # 6. Apply these DC shifts to digital barometer columns only
-        dfshifted, dcshifts = apply_dcshifts(dfheightcorrected, xcorrdf, dcshiftdf)
+        dfshifted, dcshifts = apply_dcshifts(dfheightcorrected, xcorrdf, dcshiftdf, force=True)
 
         # 7. Correct digital water column transducers for calibration and barometric pressure
         correctedAllSensorsPSI = rawdf2psidf(dfshifted, transducersDF, temperatureCorrect=False, airpressureColumn=apcol, depthCorrect=False)        
