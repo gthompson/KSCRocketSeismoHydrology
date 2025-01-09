@@ -48,7 +48,7 @@ def get_transducers_dataframe(paths, keep=False):
                'range_kPa_low':70,'range_kPa_high':170,'media':'water', 'type':'level', 
                'model':'Geokon 4500AL','set_depth_ft':-7.71,
                'dig0':9787, 'gf':-0.006724, 'tt':21.6, 'tt0':21.3, 'tf':-0.001145, 
-               'bp':14.504, 'bp0':14.298, 'id':'6S.12264.21.HDD','well':'shallow': 'tmean':27.60          
+               'bp':14.504, 'bp0':14.298, 'id':'6S.12264.21.HDD','well':'shallow', 'tmean':27.60          
                }
         transducers.append(transducer5)
 
@@ -1076,7 +1076,7 @@ def correctVibratingWireDigits(rawSeries, this_transducer, calibrationCorrect=Tr
         #print(pd.Series(tc).describe())
         a += tc
     # correct for air pressure
-    if isinstance(airpressureSeries,pd.Series):
+    if isinstance(airpressureSeries,pd.Series) or isinstance(airpressureSeries,float):
         apc = (airpressureSeries - this_transducer['bp0'])
         #print('- air pressure correction')
         #print(pd.Series(apc).describe())
@@ -1130,7 +1130,7 @@ def correctBarometricData(rawdf, barometricColumns, transducersDF, calibrationCo
                 barometricDF[col] = correctVibratingWireDigits(barometricDF[col], this_transducer, \
                                                                 calibrationCorrect=calibrationCorrect, \
                                                                 temperatureSeries=temperatureSeries, \
-                                                                airpressureSeries=None, \
+                                                                airpressureSeries=0.0, \
                                                                 depthCorrect=False)    
                 # do DCshift
                 if col in dcshifts.keys():
@@ -1280,12 +1280,25 @@ def qc_dataframe(df, remove_duplicates=False, keep='last'):
     if 'Therm(2)' in df.columns:
         count=0
         for col in df.columns:
+            if col.endswith('_std'):
+                continue
             if col[0:2]=='12' or col[0:2]=='21':
                 count+=1
                 oldcol = f'Therm({count})'
                 if oldcol in df.columns:
                     newcol = f'{col}_temp'
                     df.rename(columns={oldcol:newcol}, inplace=True)
+    if 'DynStdDev(2)' in df.columns:
+        count=0
+        for col in df.columns:
+            if col.endswith('_temp'):
+                continue
+            if col[0:2]=='12' or col[0:2]=='21':
+                count+=1
+                oldcol = f'DynStdDev({count})'
+                if oldcol in df.columns:
+                    newcol = f'{col}_std'
+                    df.rename(columns={oldcol:newcol}, inplace=True)    
 
 
 def split_by_subdir(dfall2, verbose=False):
@@ -1438,4 +1451,33 @@ def process_day(dfsummary, starttime, INPUTDIR, transducersDF):
     # Step 11 is arguably to go back to step 7 and correct for estimated sensor depths
 
     return correctedAllSensorsPSI, dcshifts, sensor_depths
+
+def load_summary_csv(summarycsvfile, split=True, remerge=True):
+
+    # Load in the summary of all files - raw 4 hourly data 
+    dfsummary = pd.read_csv(summarycsvfile)
+
+    if split:
+
+        # Split in baro, 20Hz, 100Hz
+        summary_dataframes = {}
+        for subdir in ['Baro', '20hz', '100hz']:
+            dfsub = dfsummary.copy()[dfsummary['subdir']==subdir]
+            qc_dataframe(dfsub)
+            summary_dataframes[subdir.lower()] = dfsub.copy()
+            del dfsub
+        
+        if remerge: # how to merge the 20hz data?
+            round_datetime(summary_dataframes['100hz'], freq='min' )
+            round_datetime(summary_dataframes['baro'], freq='min')
+            round_datetime(summary_dataframes['20hz'], freq='min')
+            df = merge_and_drop(summary_dataframes['100hz'], summary_dataframes['baro'], on='nearestminute', how='outer')
+            df = merge_and_drop(df, summary_dataframes['20hz'], on='nearestminute', how='outer')
+            df.dropna(how='all', axis=1, inplace=True) # drop empty rows
+            return df # cleaned up and merged dataframes into a single dataframe
+        
+        else:
+            return summary_dataframes # cleaned up dict of dataframes
+    else:
+        return dfsummary # just the raw dataframe
  
