@@ -5,6 +5,8 @@ import os
 import pandas as pd
 import glob
 
+
+
 # Define phase 2 lookup table & conversions
 # From "2022-12-03_ Field Sheet for Deployment of Groundwater Equipment at NASA_Part_II.pdf" 
 def get_transducers_dataframe(paths, keep=False):
@@ -1046,6 +1048,10 @@ std_passcals = 101325
 pa2psi = 0.000145038
 std_psi = std_passcals * pa2psi
 
+# identify dataframe columns for transducers in air and water
+aircolumns = ['AirPressureShallow', 'AirPressureDeep', '1226420', '1226429']
+watercolumns = ['1226419', '1226421', '2151691', '2149882', '1226423', '2151692']
+
 def PaDiff1m(T=std_temperature):
     PaPerM = 12.67 - 0.041*T
     return PaPerM
@@ -1061,9 +1067,14 @@ def correctForDepthBelowWaterFt(depthFt=0, T=std_temperature):
     return psi_shift
 
 def correctVibratingWireDigits(rawSeries, this_transducer, calibrationCorrect=True, temperatureSeries=None, airpressureSeries=None, depthCorrect=False):
+    serialno = this_transducer['serial']
     # correct for gain
-    if calibrationCorrect:
+    if calibrationCorrect and rawSeries.mean()>8000:
+        print(f'Applying calibration correction for {serialno}')
         a = (rawSeries - this_transducer['dig0']) * this_transducer['gf']
+        print(f'mean before: {rawSeries.mean()}, after: {a.mean()}')
+        print(f'min, max before: {rawSeries.min()}, {rawSeries.max()}')
+        print(f'min, max after: {a.min()}, {a.max()}')
     else: # assume already calibrated
         a = rawSeries
     tc = pd.Series()
@@ -1071,18 +1082,21 @@ def correctVibratingWireDigits(rawSeries, this_transducer, calibrationCorrect=Tr
     psiShift = 0.0
     # correct for temperature
     if isinstance(temperatureSeries,pd.Series) or isinstance(temperatureSeries, float):
+        print(f'Applying temperature correction for {serialno}')
         tc = (temperatureSeries - this_transducer['tt0']) * this_transducer['tf']
         #print('- temperature correction')
         #print(pd.Series(tc).describe())
         a += tc
     # correct for air pressure
     if isinstance(airpressureSeries,pd.Series) or isinstance(airpressureSeries,float):
+        print(f'Applying air pressure correction for {serialno}')
         apc = (airpressureSeries - this_transducer['bp0'])
         #print('- air pressure correction')
         #print(pd.Series(apc).describe())
         a -= apc
     # correct for depth back to water surface
     if depthCorrect:
+        print(f'Applying depth correction for {serialno}')
         psiShift = correctForDepthBelowWaterFt(depthFt=-this_transducer['set_depth_ft'])
         #print(f'- depth correction {psiShift}')
         a -= psiShift
@@ -1090,7 +1104,7 @@ def correctVibratingWireDigits(rawSeries, this_transducer, calibrationCorrect=Tr
     return a   
 
 
-def despike(df, cliplevel=1.0): # assume PSI
+def despike(df, cliplevel=0.5): # assume PSI
     for col in df.columns:
         if isinstance(col,str) and (col[0:2]=='12' or col[0:2]=='21'):
             m = df[col].median()
@@ -1134,10 +1148,12 @@ def correctBarometricData(rawdf, barometricColumns, transducersDF, calibrationCo
                                                                 depthCorrect=False)    
                 # do DCshift
                 if col in dcshifts.keys():
+                    print(f'Applying DC shift for {col}')
                     barometricDF[col] -= dcshifts[col]    
 
             # do height correction - we do this for analog barometers too
             if heightCorrect:
+                print(f'Applying height correction for {col}')
                 psiShift = correctForHeightAboveWaterFt(heightFt=this_transducer['set_depth_ft'])
                 barometricDF[col] += psiShift
 
@@ -1258,47 +1274,39 @@ def estimate_sensor_depths(df, watercolumns):
             df2[k] =  df[k] - v
     return df2, medians
 
-def qc_dataframe(df, remove_duplicates=False, keep='last'):
+def qc_dataframe(df, remove_duplicates=False, keep='last', sort_columns=False):
     '''
     Here we remove any Null rows
     We also remove any duplicate times - using the first entry
     This means if time is out of order and loops back, there could be some corruption in the data
     We could potentially alleviate bad times via resampling at 10ms/100hz
     ''' 
+ 
     if 'TIMESTAMP' in df.columns:
         df['datetime'] = pd.to_datetime(df['TIMESTAMP'])
+        df.dropna(subset='datetime', inplace=True)
         df.drop(['TIMESTAMP', 'RECORD'], axis=1, inplace=True)
+        
         if remove_duplicates:
             df.sort_values(by='datetime', inplace=True)
-            df.drop_duplicates(subset=['datetime'], keep='last')
-            #df = df[~df['datetime'].duplicated(keep=keep)] # keep first or last  
-
-    df.dropna(how='all', axis=1, inplace=True) # drop empty rows
+            df.drop_duplicates(subset=['datetime'], keep='last') 
+        
+    df.dropna(how='all', axis=1, inplace=True) # drop empty columns
     df.drop(df.columns[df.columns.str.contains('unnamed',case = False)],axis = 1, inplace = True) # drop unnamed columns
 
     # rename thermal columns
-    if 'Therm(2)' in df.columns:
-        count=0
-        for col in df.columns:
-            if col.endswith('_std'):
-                continue
-            if col[0:2]=='12' or col[0:2]=='21':
-                count+=1
-                oldcol = f'Therm({count})'
-                if oldcol in df.columns:
-                    newcol = f'{col}_temp'
-                    df.rename(columns={oldcol:newcol}, inplace=True)
-    if 'DynStdDev(2)' in df.columns:
-        count=0
-        for col in df.columns:
-            if col.endswith('_temp'):
-                continue
-            if col[0:2]=='12' or col[0:2]=='21':
-                count+=1
-                oldcol = f'DynStdDev({count})'
-                if oldcol in df.columns:
-                    newcol = f'{col}_std'
-                    df.rename(columns={oldcol:newcol}, inplace=True)    
+    thermcolumns = df.columns[df.columns.str.contains('Therm')]
+    if len(thermcolumns)>0:
+        if len(thermcolumns)==2:
+            datacolumns = watercolumns[-2:]
+        elif len(thermcolumns)==6:
+            datacolumns = [watercolumns[0], watercolumns[1], aircolumns[2], watercolumns[2], watercolumns[3], aircolumns[3] ]
+        for count, oldcol in enumerate(thermcolumns):
+            newcol = datacolumns[count] + '_temp'
+            df.rename(columns={oldcol:newcol, f'DynStdDev({count})':newcol.replace('_temp','_std')}, inplace=True)
+
+    #if sort_columns:
+    #    df.sort_index(axis=1, inplace=True)
 
 
 def split_by_subdir(dfall2, verbose=False):
@@ -1346,6 +1354,7 @@ def get_raw_data(dfall, starttime, endtime, INPUTDIR, save=True):
                 #display(dfdata[subdir])
             else:
                 print('- not found')
+
         if save:
             for k in dfdata.keys():
                 pklfile = f'raw_{startt}_{k}.pkl'
@@ -1365,9 +1374,7 @@ def process_day(dfsummary, starttime, INPUTDIR, transducersDF):
     # set endtime 24 hours after starttime
     endtime = starttime + pd.Timedelta(hours=24)
 
-    # identify dataframe columns for transducers in air and water
-    aircolumns = ['AirPressureShallow', 'AirPressureDeep', '1226420', '1226429']
-    watercolumns = ['1226419', '1226421', '2151691', '2149882', '1226423', '2151692']
+
 
 
     ############### Processing #####################
@@ -1452,28 +1459,36 @@ def process_day(dfsummary, starttime, INPUTDIR, transducersDF):
 
     return correctedAllSensorsPSI, dcshifts, sensor_depths
 
-def load_summary_csv(summarycsvfile, split=True, remerge=True):
+def load_summary_csv(summarycsvfile, split=True, remerge=True, temperatureData=False):
 
     # Load in the summary of all files - raw 4 hourly data 
     dfsummary = pd.read_csv(summarycsvfile)
 
-    if split:
+    if split: # we also get the 1Sec data if we do not remerge
 
         # Split in baro, 20Hz, 100Hz
         summary_dataframes = {}
         for subdir in ['Baro', '20hz', '100hz']:
             dfsub = dfsummary.copy()[dfsummary['subdir']==subdir]
-            qc_dataframe(dfsub)
-            summary_dataframes[subdir.lower()] = dfsub.copy()
+            if temperatureData:
+                # split out any rows that have 1Sec in basename
+                dfsub = dfsub[dfsub['basename'].str.contains('1Sec')]
+            else:
+                dfsub = dfsub[~dfsub['basename'].str.contains('1Sec')]   
+            if len(dfsub)>0:       
+                qc_dataframe(dfsub)
+                summary_dataframes[subdir.lower()] = dfsub.copy()
             del dfsub
         
         if remerge: # how to merge the 20hz data?
-            round_datetime(summary_dataframes['100hz'], freq='min' )
-            round_datetime(summary_dataframes['baro'], freq='min')
-            round_datetime(summary_dataframes['20hz'], freq='min')
-            df = merge_and_drop(summary_dataframes['100hz'], summary_dataframes['baro'], on='nearestminute', how='outer')
-            df = merge_and_drop(df, summary_dataframes['20hz'], on='nearestminute', how='outer')
-            df.dropna(how='all', axis=1, inplace=True) # drop empty rows
+            for k,v in summary_dataframes.items():
+                round_datetime(summary_dataframes[k], freq='min' )
+            if temperatureData:
+                df = merge_and_drop(summary_dataframes['20hz'], summary_dataframes['100hz'], on='nearestminute', how='outer')
+            else:
+                df = merge_and_drop(summary_dataframes['100hz'], summary_dataframes['baro'], on='nearestminute', how='outer')
+                df = merge_and_drop(df, summary_dataframes['20hz'], on='nearestminute', how='outer')
+            qc_dataframe(df, sort_columns=True)
             return df # cleaned up and merged dataframes into a single dataframe
         
         else:
