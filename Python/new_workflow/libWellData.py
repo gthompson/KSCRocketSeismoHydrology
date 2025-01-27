@@ -55,7 +55,7 @@ def get_transducers_dataframe(paths, keep=False):
         transducers.append(transducer5)
 
         # Intermediate well (HOF-IW00061)
-        transducer6 = {'serial':'AirPressureDeep', 'Fs':100, 'sensor':'barometer','shielding':'none',
+        transducer6 = {'serial':'AirPressureIntermediate', 'Fs':100, 'sensor':'barometer','shielding':'none',
                'range_kPa_low':100,'range_kPa_high':100,'media':'air', 'type':'pressure', 
                'model':'Keller 0507.01401.051311.07','set_depth_ft':3.86, 'id':'6I.0XXXX.XX.HDH', 'well':'intermediate', 'tmean':None
               }
@@ -1049,8 +1049,9 @@ pa2psi = 0.000145038
 std_psi = std_passcals * pa2psi
 
 # identify dataframe columns for transducers in air and water
-aircolumns = ['AirPressureShallow', 'AirPressureDeep', '1226420', '1226429']
+aircolumns = ['AirPressureShallow', 'AirPressureIntermediate', '1226420', '1226429']
 watercolumns = ['1226419', '1226421', '2151691', '2149882', '1226423', '2151692']
+sensors = {'shallow':[watercolumns[i] for i in [0,1,4]], 'intermediate':[watercolumns[i] for i in [2,3,5]]}
 
 def PaDiff1m(T=std_temperature):
     PaPerM = 12.67 - 0.041*T
@@ -1071,15 +1072,16 @@ def correctVibratingWireDigits(rawSeries, this_transducer, calibrationCorrect=Tr
     # correct for gain
     if calibrationCorrect and rawSeries.mean()>8000:
         print(f'Applying calibration correction for {serialno}')
-        a = (rawSeries - this_transducer['dig0']) * this_transducer['gf']
-        print(f'mean before: {rawSeries.mean()}, after: {a.mean()}')
+        cal = (rawSeries - this_transducer['dig0']) * this_transducer['gf']
+        print(f'mean before: {rawSeries.mean()}, after: {cal.mean()}')
         print(f'min, max before: {rawSeries.min()}, {rawSeries.max()}')
-        print(f'min, max after: {a.min()}, {a.max()}')
+        print(f'min, max after: {cal.min()}, {cal.max()}')
     else: # assume already calibrated
-        a = rawSeries
+        cal = rawSeries
     tc = pd.Series()
     apc = pd.Series()
     psiShift = 0.0
+    a = cal.copy()
     # correct for temperature
     if isinstance(temperatureSeries,pd.Series) or isinstance(temperatureSeries, float):
         print(f'Applying temperature correction for {serialno}')
@@ -1101,7 +1103,7 @@ def correctVibratingWireDigits(rawSeries, this_transducer, calibrationCorrect=Tr
         #print(f'- depth correction {psiShift}')
         a -= psiShift
     #print(f'T-correction={tc.mean()}, AP-correction={apc.mean()}, DCshift={-psiShift}')
-    return a   
+    return cal, a   
 
 
 def despike(df, cliplevel=0.5): # assume PSI
@@ -1118,18 +1120,19 @@ def get_transducer_metadata(serialnum, transducersDF):
     return this_transducer
 
 def get_temperature_data(df, col, temperatureCorrect, this_transducer):
-    # get temperature series
+    # get temperature series, filling blanks beyond 2022-08-04 with average values
     tempcol = f'{col}_temp'
     temperatureSeries=None
     if temperatureCorrect:
         if tempcol in df.columns:
             temperatureSeries = df[tempcol].fillna(this_transducer['tmean']) # fill any nans
+            df[tempcol]=temperatureSeries # this would insert temperature into output dataframe
         else:
             temperatureSeries = this_transducer['tmean'] # just use average temperature determined in 04_compare_barometers, which was for 07/21-08/03 period
     return temperatureSeries
 
 
-def correctBarometricData(rawdf, barometricColumns, transducersDF, calibrationCorrect=True, temperatureCorrect=True, heightCorrect=True, dcshifts={}, bool_despike=True, cliplevel=0.5):
+def correctBarometricData(rawdf, barometricColumns, transducersDF, calibrationCorrect=True, temperatureCorrect=True, heightCorrect=True, dcshifts={}, bool_despike=False, cliplevel=0.5):
     # turn barometric columns from digits into PSI
     barometricDF = rawdf.copy()
     for colindex,col in enumerate(barometricColumns):
@@ -1141,7 +1144,8 @@ def correctBarometricData(rawdf, barometricColumns, transducersDF, calibrationCo
                 temperatureSeries = get_temperature_data(barometricDF, col, temperatureCorrect, this_transducer)
 
                 # apply calibration equation
-                barometricDF[col] = correctVibratingWireDigits(barometricDF[col], this_transducer, \
+                newcol = f'{col}_corrected'
+                barometricDF[col], barometricDF[newcol] = correctVibratingWireDigits(barometricDF[col], this_transducer, \
                                                                 calibrationCorrect=calibrationCorrect, \
                                                                 temperatureSeries=temperatureSeries, \
                                                                 airpressureSeries=0.0, \
@@ -1163,7 +1167,7 @@ def correctBarometricData(rawdf, barometricColumns, transducersDF, calibrationCo
 
     return barometricDF
 
-def rawdf2psidf(barometricdf, transducersDF, temperatureCorrect=True, airpressureColumn=None, depthCorrect=False, bool_despike=True, cliplevel=0.5):
+def rawdf2psidf(barometricdf, transducersDF, temperatureCorrect=True, airpressureColumn=None, depthCorrect=False, bool_despike=False, cliplevel=0.5):
     psidf = barometricdf.copy()
     #print('- Applying calibration equations')
     for col in psidf.columns:
@@ -1178,11 +1182,18 @@ def rawdf2psidf(barometricdf, transducersDF, temperatureCorrect=True, airpressur
 
                 # get airpressure series
                 airpressureSeries = None
+                if airpressureColumn=='well':
+                    if col in sensors['shallow']:
+                        airpressureColumn = 'AirPressureShallow'
+                    elif col in sensors['intermediate']:
+                        airpressureColumn = 'AirPressureIntermediate'
+                    
                 if airpressureColumn:
                     airpressureSeries = psidf[airpressureColumn]
 
                 # apply calibration equation
-                psidf[col] = correctVibratingWireDigits(psidf[col], this_transducer, \
+                newcol = f'{col}_corrected'
+                psidf[col], psidf[newcol] = correctVibratingWireDigits(psidf[col], this_transducer, \
                                                               temperatureSeries=temperatureSeries, \
                                                                 airpressureSeries=airpressureSeries, \
                                                                     depthCorrect=depthCorrect)   
@@ -1332,7 +1343,7 @@ def get_raw_data(dfall, starttime, endtime, INPUTDIR, save=True):
     if len(allpklfiles)>0:
         print('existing day pickle files found - loading these is faster')
         for pklfile in allpklfiles:
-            k = csvfile.split(f'{startt}_')[1].replace('.csv','')
+            k = pklfile.split(f'{startt}_')[1].replace('.pkl','')
             print(f'reading {pklfile} into dfdata[{k}]')
             dfdata[k] = pd.read_pickle(pklfile)
     else:
@@ -1364,7 +1375,7 @@ def get_raw_data(dfall, starttime, endtime, INPUTDIR, save=True):
     return dfdata
 
 
-def process_day(dfsummary, starttime, INPUTDIR, transducersDF):
+def process_day(dfsummary, starttime, INPUTDIR, transducersDF, apcol='well', temperatureCorrect=True):
 
     ############### 0. Set up #####################
     # set default outputs
@@ -1373,9 +1384,6 @@ def process_day(dfsummary, starttime, INPUTDIR, transducersDF):
 
     # set endtime 24 hours after starttime
     endtime = starttime + pd.Timedelta(hours=24)
-
-
-
 
     ############### Processing #####################
     # 1. Load data from starttime to endtime
@@ -1391,21 +1399,28 @@ def process_day(dfsummary, starttime, INPUTDIR, transducersDF):
     elif 'baro' in dfday:
         print('no 100hz')
         dfmerged = merge_and_drop(dfday['baro'], None, on='datetime', drop=True)
+        if 'AirPressureDeep' in dfmerged.columns:
+            dfmerged.rename(columns={'AirPressureDeep':'AirPressureIntermediate'}, inplace=True)
     else:
         print('No 100hz, no baro')
-        return None, dcshifts, sensor_depths
+        return None #, dcshifts, sensor_depths
 
     # Choose air pressure column
-    apcol=None
-    for col in aircolumns:
-        if col=='1226420':
-            continue
-        if col in dfmerged.columns:
-            apcol = col
-            break
-    print(f'Choosing {apcol} as air pressure column')
-    if not apcol:
-        return None, dcshifts, sensor_depths
+    """
+    if apcol:
+        if not apcol in dfmerged.columns:
+            return None, dcshifts, sensor_depths
+    # Removing following so that if we have apcol=None, the data will get processed without air pressure correction
+    else:
+        for col in aircolumns:
+            if col=='1226420':
+                continue
+            if col in dfmerged.columns:
+                apcol = col
+                break
+        print(f'Choosing {apcol} as air pressure column')
+    """
+
 
     # 3. merge the 20hz data via linear interpolation
     if '20hz' in dfday:
@@ -1425,9 +1440,11 @@ def process_day(dfsummary, starttime, INPUTDIR, transducersDF):
     print('Columns in dfmerged: \n', dfmerged.columns)
 
     # 4. Correct analog and digital air column transducers for calibration, elevation above water
-    # NOTE: Already temperature correction works, we only have temperature data from 07/21-08/03
-    dfheightcorrected = correctBarometricData(dfmerged, aircolumns, transducersDF, temperatureCorrect=False, heightCorrect=True)
-
+    # NOTE: Although temperature correction works, we only have temperature data from 07/21-08/03
+    dfheightcorrected = correctBarometricData(dfmerged, aircolumns, transducersDF, temperatureCorrect=temperatureCorrect, heightCorrect=True)
+    print('- height corrected')
+    display(dfheightcorrected)
+    """
     if '100hz' in dfday: 
         # 5. (Correlate and) compare medians to find best DC shifts
         xcorrdf, dcshiftdf = xcorr_columns(dfheightcorrected, aircolumns)
@@ -1436,28 +1453,34 @@ def process_day(dfsummary, starttime, INPUTDIR, transducersDF):
         dfshifted, dcshifts = apply_dcshifts(dfheightcorrected, xcorrdf, dcshiftdf, force=True)
 
         # 7. Correct digital water column transducers for calibration and barometric pressure
-        correctedAllSensorsPSI = rawdf2psidf(dfshifted, transducersDF, temperatureCorrect=False, airpressureColumn=apcol, depthCorrect=False)        
+        correctedAllSensorsPSI = rawdf2psidf(dfshifted, transducersDF, temperatureCorrect=temperatureCorrect, airpressureColumn=apcol, depthCorrect=False)        
 
-    elif '20hz' in dfday:
+    elif '20hz' in dfday: # no analog or digital barometers available, so no shifting 
         # 7. Correct digital water column transducers for calibration and barometric pressure
-        correctedAllSensorsPSI = rawdf2psidf(dfheightcorrected, transducersDF, temperatureCorrect=False, airpressureColumn=apcol, depthCorrect=False)
+        correctedAllSensorsPSI = rawdf2psidf(dfheightcorrected, transducersDF, temperatureCorrect=temperatureCorrect, airpressureColumn=apcol, depthCorrect=False)
 
+    """
+    if '100hz' in dfday or '20hz' in dfday:
+        correctedAllSensorsPSI = rawdf2psidf(dfheightcorrected, transducersDF, temperatureCorrect=temperatureCorrect, airpressureColumn=apcol, depthCorrect=False)
+        print('- all corrected')
+        display(correctedAllSensorsPSI)
     else:
-        return dfheightcorrected, dcshifts, sensor_depths # height corrected analog barometers only
+        print('- 100hz, 20hz not found in dfday')
+        return dfheightcorrected #, dcshifts, sensor_depths # height corrected analog barometers only
 
 
     # 8: convert to water levels in meters
-    correctedAllSensorsMeters = psi2meters(correctedAllSensorsPSI, watercolumns)
+    #correctedAllSensorsMeters = psi2meters(correctedAllSensorsPSI, watercolumns)
 
     # 9: convert to water levels in meters relative to the set depth measured by Steve Krupa
     #relativeAllSensorsMeters = relative_to_set_depth(correctedAllSensorsMeters, transducersDF, watercolumns)
 
     # 10: estimate correct set depths from median of each, and shift by this amount
-    estimatedAllSensorsMeters, sensor_depths = estimate_sensor_depths(correctedAllSensorsMeters, watercolumns)  
+    #estimatedAllSensorsMeters, sensor_depths = estimate_sensor_depths(correctedAllSensorsMeters, watercolumns)  
 
     # Step 11 is arguably to go back to step 7 and correct for estimated sensor depths
 
-    return correctedAllSensorsPSI, dcshifts, sensor_depths
+    return correctedAllSensorsPSI #, dcshifts, sensor_depths
 
 def load_summary_csv(summarycsvfile, split=True, remerge=True, temperatureData=False):
 
