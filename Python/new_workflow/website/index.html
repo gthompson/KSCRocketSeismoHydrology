@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rocket Launches from Kennedy Space Center</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon">
+</head>
+<body>
+
+    <header>
+        <h1>Rocket Events</h1>
+    </header>
+
+    <div class="launch-list">
+        <h1>Rocket Launches from Kennedy Space Center</h1>
+        <ul>
+            <li><a href="launches/launch1.html">Launch 1: Falcon 9</a></li>
+            <li><a href="launches/launch2.html">Launch 2: Atlas V</a></li>
+            <li><a href="launches/launch3.html">Launch 3: SpaceX Crew Dragon</a></li>
+            <!-- Add more launches as needed -->
+        </ul>
+    </div>
+
+
+    <h1>Fetch and Parse CSV File</h1>
+    <pre id="jsonTable"></pre>
+
+    <div class="scroll">
+        <button id="prevBtn" onclick="previousPage()">Previous</button>
+        <a href="../index.html">Back to list</a>
+        <button id="nextBtn" onclick="nextPage()">Next</button>
+    </div>   
+
+    <footer>
+        <p>&copy; The Seismo-Acoustic Rocket Event Catalog<br/>Glenn Thompson 2025</p>
+    </footer>
+
+    <script src="navigate.js"></script>
+</body>
+</html>
