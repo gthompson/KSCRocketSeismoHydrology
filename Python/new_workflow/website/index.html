@@ -14,29 +14,13 @@
     </header>
 
     <div class="launch-list">
-        <h1>Rocket Launches from Kennedy Space Center</h1>
-        <ul>
-            <li><a href="launches/launch1.html">Launch 1: Falcon 9</a></li>
-            <li><a href="launches/launch2.html">Launch 2: Atlas V</a></li>
-            <li><a href="launches/launch3.html">Launch 3: SpaceX Crew Dragon</a></li>
-            <!-- Add more launches as needed -->
-        </ul>
+        <p id="jsonTable"></p>
     </div>
-
-
-    <h1>Fetch and Parse CSV File</h1>
-    <pre id="jsonTable"></pre>
-
-    <div class="scroll">
-        <button id="prevBtn" onclick="previousPage()">Previous</button>
-        <a href="../index.html">Back to list</a>
-        <button id="nextBtn" onclick="nextPage()">Next</button>
-    </div>   
 
     <footer>
         <p>&copy; The Seismo-Acoustic Rocket Event Catalog<br/>Glenn Thompson 2025</p>
     </footer>
 
-    <script src="navigate.js"></script>
+    <script src="index.js"></script>
 </body>
 </html>

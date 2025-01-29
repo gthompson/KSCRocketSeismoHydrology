@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rocket event browser</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon">
+
+</head>
+<body>
+    <noscript>
+        <p>JavaScript is not enabled. Please enable it to view this page properly.</p>
+    </noscript>
+
+    <header>
+        <h1 id="header_text"></h1>
+    </header>
+
+    <div class="scroll">
+        <button id="prevBtn1" onclick="previousPage()">Previous</button>
+        <a href="index.html">Back to list</a>
+        <button id="nextBtn1" onclick="nextPage()">Next</button>
+    </div>
+
+    <div class="event_page">
+        <h1 id="event_title"></h1>
+        <p id="event_datetime"></p>
+        <p id="event_slc"></p>
+    </div>
+
+    <div class="seismograms">
+        <img id="seismogram">
+    </div>
+
+    <div class="scroll">
+        <button id="prevBtn2" onclick="previousPage()">Previous</button>
+        <a href="index.html">Back to list</a>
+        <button id="nextBtn2" onclick="nextPage()">Next</button>
+    </div>
+
+    <script src="event.js"></script>
+
+    <footer>
+        <p>&copy; The Seismo-Acoustic Rocket Event Catalog<br/>Glenn Thompson 2025</p>
+    </footer>
+
+</body>
+</html>
