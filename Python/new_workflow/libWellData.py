@@ -216,6 +216,9 @@ def psi2feet(psi):
 def psi2inches(psi):
     return 2.31 * psi * 12
 
+def feet2meters(ft):
+    return 0.3048 * ft
+
 def localtime2utc(this_dt, hours): # call with hours=4. # kelly says time was always 4 hours behind UTC. no hour change on 11/6
     if not hours:
         hours = 4
@@ -1132,11 +1135,13 @@ def get_temperature_data(df, col, temperatureCorrect, this_transducer):
     return temperatureSeries
 
 
-def correctBarometricData(rawdf, barometricColumns, transducersDF, calibrationCorrect=True, temperatureCorrect=True, heightCorrect=True, dcshifts={}, bool_despike=False, cliplevel=0.5):
+def correctBarometricData(rawdf, barometricColumns, transducersDF, calibrationCorrect=True, temperatureCorrect=True, heightCorrect=True):
     # turn barometric columns from digits into PSI
     barometricDF = rawdf.copy()
     for colindex,col in enumerate(barometricColumns):
         if col in barometricDF:
+            calcol = f'{col}_calibrated'
+            corrcol = f'{col}_corrected'          
             this_transducer = get_transducer_metadata(col, transducersDF)
             if isinstance(col,str) and (col=='1226420' or col=='1226429'):
                    
@@ -1144,30 +1149,27 @@ def correctBarometricData(rawdf, barometricColumns, transducersDF, calibrationCo
                 temperatureSeries = get_temperature_data(barometricDF, col, temperatureCorrect, this_transducer)
 
                 # apply calibration equation
-                newcol = f'{col}_corrected'
-                barometricDF[col], barometricDF[newcol] = correctVibratingWireDigits(barometricDF[col], this_transducer, \
+                barometricDF[calcol], barometricDF[corrcol] = correctVibratingWireDigits(barometricDF[col], this_transducer, \
                                                                 calibrationCorrect=calibrationCorrect, \
                                                                 temperatureSeries=temperatureSeries, \
                                                                 airpressureSeries=0.0, \
                                                                 depthCorrect=False)    
-                # do DCshift
-                if col in dcshifts.keys():
-                    print(f'Applying DC shift for {col}')
-                    barometricDF[col] -= dcshifts[col]    
+                
+                barometricDF.rename(columns={col:f'{col}_digits'}, inplace=True)
+
+            else: # analog barometer
+                barometricDF.rename(columns={col:calcol}, inplace=True) # there is no _digits for analog barometers, so just rename to _calibrated
+                barometricDF[corrcol] = barometricDF[calcol] # there are no vibrating wire corrections to apply, but we do this so we can height correct below
 
             # do height correction - we do this for analog barometers too
-            if heightCorrect:
+            if heightCorrect and corrcol in barometricDF.columns:
                 print(f'Applying height correction for {col}')
                 psiShift = correctForHeightAboveWaterFt(heightFt=this_transducer['set_depth_ft'])
-                barometricDF[col] += psiShift
-
-
-    if bool_despike:
-        despike(barometricDF, cliplevel=cliplevel)
+                barometricDF[corrcol] += psiShift
 
     return barometricDF
 
-def rawdf2psidf(barometricdf, transducersDF, temperatureCorrect=True, airpressureColumn=None, depthCorrect=False, bool_despike=False, cliplevel=0.5):
+def rawdf2psidf(barometricdf, transducersDF, temperatureCorrect=True, airpressureColumn=None, depthCorrect=True):
     psidf = barometricdf.copy()
     #print('- Applying calibration equations')
     for col in psidf.columns:
@@ -1184,22 +1186,22 @@ def rawdf2psidf(barometricdf, transducersDF, temperatureCorrect=True, airpressur
                 airpressureSeries = None
                 if airpressureColumn=='well':
                     if col in sensors['shallow']:
-                        airpressureColumn = 'AirPressureShallow'
+                        airpressureColumn = 'AirPressureShallow_corrected'
                     elif col in sensors['intermediate']:
-                        airpressureColumn = 'AirPressureIntermediate'
+                        airpressureColumn = 'AirPressureIntermediate_corrected'
                     
                 if airpressureColumn:
                     airpressureSeries = psidf[airpressureColumn]
 
                 # apply calibration equation
-                newcol = f'{col}_corrected'
-                psidf[col], psidf[newcol] = correctVibratingWireDigits(psidf[col], this_transducer, \
+                calcol = f'{col}_calibrated'
+                corrcol = f'{col}_corrected'
+                psidf[calcol], psidf[corrcol] = correctVibratingWireDigits(psidf[col], this_transducer, \
                                                               temperatureSeries=temperatureSeries, \
                                                                 airpressureSeries=airpressureSeries, \
                                                                     depthCorrect=depthCorrect)   
+                psidf.rename(columns={col:f'{col}_digits'}, inplace=True) # rename original column to _digits
                 
-    if bool_despike:
-        despike(psidf, cliplevel=cliplevel)
     return psidf
     
 def apply_dcshifts(df, xcorrdf, dcshiftdf, force=False): # here could force AirPressureShallow
@@ -1256,13 +1258,17 @@ def xcorr_columns(df, columns):
     display(dcshiftdf_styled) 
     return xcorrdf, dcshiftdf
 
-def psi2meters(df, watercolumns):
+def psi2meters(df, watercolumns=None):
     metersPerPSI = 0.703070
-    df2 = df.copy()
-    for col in df.columns:
-        if col in watercolumns:
-            df2[col] = -df2[col] * metersPerPSI
-    return df2
+    if isinstance(df, pd.Series):
+        return df * metersPerPSI
+    else:
+    
+        df2 = df.copy()
+        for col in df.columns:
+            if col in watercolumns:
+                df2[col] = -df2[col] * metersPerPSI
+        return df2
 
 
 def relative_to_set_depth(df, transducersDF, watercolumns):
@@ -1437,13 +1443,13 @@ def process_day(dfsummary, starttime, INPUTDIR, transducersDF, apcol='well', tem
         print('no 20hz')
 
     ############## this is the place to save raw data for this time period, if at all ########################
-    print('Columns in dfmerged: \n', dfmerged.columns)
+    #print('Columns in dfmerged: \n', dfmerged.columns)
 
     # 4. Correct analog and digital air column transducers for calibration, elevation above water
     # NOTE: Although temperature correction works, we only have temperature data from 07/21-08/03
     dfheightcorrected = correctBarometricData(dfmerged, aircolumns, transducersDF, temperatureCorrect=temperatureCorrect, heightCorrect=True)
-    print('- height corrected')
-    display(dfheightcorrected)
+    #print('- height corrected')
+    #display(dfheightcorrected)
     """
     if '100hz' in dfday: 
         # 5. (Correlate and) compare medians to find best DC shifts
@@ -1461,9 +1467,9 @@ def process_day(dfsummary, starttime, INPUTDIR, transducersDF, apcol='well', tem
 
     """
     if '100hz' in dfday or '20hz' in dfday:
-        correctedAllSensorsPSI = rawdf2psidf(dfheightcorrected, transducersDF, temperatureCorrect=temperatureCorrect, airpressureColumn=apcol, depthCorrect=False)
+        correctedAllSensorsPSI = rawdf2psidf(dfheightcorrected, transducersDF, temperatureCorrect=temperatureCorrect, airpressureColumn=apcol, depthCorrect=True)
         print('- all corrected')
-        display(correctedAllSensorsPSI)
+        #display(correctedAllSensorsPSI)
     else:
         print('- 100hz, 20hz not found in dfday')
         return dfheightcorrected #, dcshifts, sensor_depths # height corrected analog barometers only
@@ -1518,4 +1524,18 @@ def load_summary_csv(summarycsvfile, split=True, remerge=True, temperatureData=F
             return summary_dataframes # cleaned up dict of dataframes
     else:
         return dfsummary # just the raw dataframe
- 
+    
+def median_despike(data, window_size, threshold=None):
+    """Despike a pandas Series using a moving window median filter."""
+    m = data.median()
+    data = data - m
+    #print(f'median={m}, data={data.describe()}')
+    rolling_median = data.rolling(window_size, center=True, min_periods=1).median()
+    difference = np.abs(data - rolling_median)
+    if not threshold:
+        mad = difference.rolling(window_size, center=True, min_periods=1).median()
+        threshold = 3 * mad  # Adjust threshold as needed
+    #print(f'threshold={threshold}, rolling_median={rolling_median.describe()}')
+    despiked_data = np.where(difference > threshold, rolling_median, data)
+    #return pd.Series(despiked_data, index=data.index) + m
+    return pd.Series(despiked_data) + m
