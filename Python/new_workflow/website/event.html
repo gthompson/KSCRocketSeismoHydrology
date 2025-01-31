@@ -28,10 +28,18 @@
         <p id="event_datetime"></p>
         <p id="event_slc"></p>
     </div>
+    
+    <!-- Radio buttons to choose between two images -->
+    <input type="radio" name="imageOption" value="image1" id="image1" checked> Infrasonic<br>
+    <input type="radio" name="imageOption" value="image2" id="image2"> Seismic Velocity<br>
+    <input type="radio" name="imageOption" value="image3" id="image3"> Seismic Displacement<br>    
+    <input type="radio" name="imageOption" value="image4" id="image4"> HDD<br>    
+    <input type="radio" name="imageOption" value="image5" id="image5"> WLM<br>
 
-    <div class="seismograms">
-        <img id="seismogram">
-    </div>
+    <br>
+    
+    <!-- Image display area -->
+    <img id="imageDisplay" src="" alt="Image Preview">
 
     <div class="scroll">
         <button id="prevBtn2" onclick="previousPage()">Previous</button>

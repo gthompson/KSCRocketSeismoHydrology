@@ -36,7 +36,7 @@ def copy_png_files_with_structure(src_dir, dest_dir):
                 shutil.copy2(src_file, dest_file)
                 print(f"Copied {src_file} to {dest_file}")
 
-copy_png_files_with_structure(src_directory, os.path.join(destdir, 'EVENTS'))
+#copy_png_files_with_structure(src_directory, os.path.join(destdir, 'EVENTS'))
 csvsrc = os.path.join(src_directory, 'launchesDF.csv')
 #csvsrc = '/shares/hal9000/share/data/KSC/EROSION/DropboxFolder/2022_DATA/PilotStudy_KSC_Rocket_Launches.csv'
 csvtrg = os.path.join(destdir, 'launches.csv')

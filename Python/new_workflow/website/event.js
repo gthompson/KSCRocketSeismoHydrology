@@ -10,6 +10,15 @@ const csvData = sessionStorage.getItem('csvData');
 const rows = JSON.parse(csvData);
 const numevents = rows.length;
 
+// Get the radio buttons and image element
+const image1Radio = document.getElementById("image1");
+const image2Radio = document.getElementById("image2");
+const image3Radio = document.getElementById("image3");
+const image4Radio = document.getElementById("image4");
+const image5Radio = document.getElementById("image5");
+const imageDisplay = document.getElementById("imageDisplay");
+
+
 // Function to update the displayed page and buttons
 function updatePage() {
     const row = rows[eventnum-1]
@@ -18,9 +27,9 @@ function updatePage() {
     document.getElementById('event_title').textContent = row['Rocket_Payload'];
     document.getElementById('event_datetime').textContent = `datetime: ${row["datetime"]}`;
     document.getElementById('event_slc').textContent = `SLC: ${row["SLC"]}`;   
-    seismogram_png = 'EVENTS/' + row['datetime'].replace(' ', 'T') + '/seismic.png'
-    seismogramElement = document.getElementById('seismogram');
-    seismogramElement.src = seismogram_png;   
+    //seismogram_png = 'EVENTS/' + row['datetime'].replace(' ', 'T') + '/seismic.png'
+    //seismogramElement = document.getElementById('seismogram');
+    //seismogramElement.src = seismogram_png;   
 
     // Disable "Previous" button if on the first page
     document.getElementById('prevBtn1').disabled = eventnum <= 1;
@@ -34,6 +43,42 @@ function updatePage() {
     // Disable "Next" button if on the last page
     document.getElementById('nextBtn2').disabled = eventnum >= numevents;
 
+
+    if (image1Radio.checked) {
+        set_imgfile('infrasound.png');
+        //let imgfile = 'EVENTS/' + rows[eventnum-1]['datetime'].replace(' ', 'T') + '/infrasound.png'
+        //imageDisplay.src = imgfile; 
+    }
+
+    if (image2Radio.checked) {
+        set_imgfile('velocity.png');
+        //let imgfile = 'EVENTS/' + rows[eventnum-1]['datetime'].replace(' ', 'T') + '/seismic.png'
+        //imageDisplay.src = imgfile; 
+    }    
+
+    if (image3Radio.checked) {
+        set_imgfile('displacement.png');
+        //let imgfile = 'EVENTS/' + rows[eventnum-1]['datetime'].replace(' ', 'T') + '/seismic.png'
+        //imageDisplay.src = imgfile; 
+    }        
+
+    if (image4Radio.checked) {
+        set_imgfile('stream_HDD.png');
+        //let imgfile = 'EVENTS/' + rows[eventnum-1]['datetime'].replace(' ', 'T') + '/seismic.png'
+        //imageDisplay.src = imgfile; 
+    } 
+    
+    if (image5Radio.checked) {
+        set_imgfile('stream_WLM.png');
+        //let imgfile = 'EVENTS/' + rows[eventnum-1]['datetime'].replace(' ', 'T') + '/seismic.png'
+        //imageDisplay.src = imgfile; 
+    }       
+
+
+}
+
+function set_imgfile(pngbasename) {
+    imageDisplay.src = 'EVENTS/' + rows[eventnum-1]['datetime'].replace(' ', 'T') + '/' + pngbasename;
 }
 
 function previousPage() {
@@ -54,25 +99,44 @@ function nextPage() {
 updatePage();
 
 
-window.onload = function() {
-    const img = document.getElementById('seismogram');
-
-    // Function to resize image based on available screen height
-    function fitImageToScreen() {
-        const viewportHeight = window.innerHeight; // Get the height of the viewport
-        const imgAspectRatio = img.naturalWidth / img.naturalHeight; // Get the aspect ratio of the image
-
-        // Calculate the new width while maintaining aspect ratio
-        const newWidth = viewportHeight * imgAspectRatio;
-
-        // Set the new width and height for the image
-        img.style.height = `${viewportHeight}px`;
-        img.style.width = `${newWidth}px`;
+// Add event listeners for the radio buttons
+image1Radio.addEventListener("change", function() {
+    if (image1Radio.checked) {
+        set_imgfile('infrasound.png');
+        //let imgfile = 'EVENTS/' + rows[eventnum-1]['datetime'].replace(' ', 'T') + '/infrasound.png'
+        //imageDisplay.src = imgfile; 
     }
+});
 
-    // Call function to fit image on page load
-    fitImageToScreen();
+image2Radio.addEventListener("change", function() {
+    if (image2Radio.checked) {
+        set_imgfile('velocity.png');
+        //let imgfile = 'EVENTS/' + rows[eventnum-1]['datetime'].replace(' ', 'T') + '/seismic.png'
+        //imageDisplay.src = imgfile; 
+    }
+});
 
-    // Optionally, re-fit image on window resize
-    window.onresize = fitImageToScreen;
-};
+image3Radio.addEventListener("change", function() {
+    if (image3Radio.checked) {
+        set_imgfile('displacement.png');
+        //let imgfile = 'EVENTS/' + rows[eventnum-1]['datetime'].replace(' ', 'T') + '/stream_HDD.png'
+        //imageDisplay.src = imgfile; 
+    }
+});
+
+image4Radio.addEventListener("change", function() {
+    if (image4Radio.checked) {
+        set_imgfile('stream_HDD.png');
+        //let imgfile = 'EVENTS/' + rows[eventnum-1]['datetime'].replace(' ', 'T') + '/stream_HDD.png'
+        //imageDisplay.src = imgfile; 
+    }
+});
+
+image5Radio.addEventListener("change", function() {
+    if (image5Radio.checked) {
+        set_imgfile('stream_WLM.png');
+        //let imgfile = 'EVENTS/' + rows[eventnum-1]['datetime'].replace(' ', 'T') + '/stream_WLM.png'
+        //imageDisplay.src = imgfile; 
+    }
+});
+
