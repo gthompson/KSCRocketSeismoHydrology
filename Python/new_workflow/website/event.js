@@ -22,14 +22,11 @@ const imageDisplay = document.getElementById("imageDisplay");
 // Function to update the displayed page and buttons
 function updatePage() {
     const row = rows[eventnum-1]
-    console.log(row)
     document.getElementById('header_text').textContent = `Event ${eventnum} of ${numevents}`;
-    document.getElementById('event_title').textContent = row['Rocket_Payload'];
-    document.getElementById('event_datetime').textContent = `datetime: ${row["datetime"]}`;
-    document.getElementById('event_slc').textContent = `SLC: ${row["SLC"]}`;   
-    //seismogram_png = 'EVENTS/' + row['datetime'].replace(' ', 'T') + '/seismic.png'
-    //seismogramElement = document.getElementById('seismogram');
-    //seismogramElement.src = seismogram_png;   
+    document.getElementById('event_datetime').textContent = `${row["datetime"]}`;
+    document.getElementById('event_slc').textContent = `${row["SLC"]}`;   
+    document.getElementById('event_rocket').textContent = `${row["rocket"]}`;   
+    document.getElementById('event_mission').textContent = `${row["mission"]}`;       
 
     // Disable "Previous" button if on the first page
     document.getElementById('prevBtn1').disabled = eventnum <= 1;
@@ -46,32 +43,22 @@ function updatePage() {
 
     if (image1Radio.checked) {
         set_imgfile('infrasound.png');
-        //let imgfile = 'EVENTS/' + rows[eventnum-1]['datetime'].replace(' ', 'T') + '/infrasound.png'
-        //imageDisplay.src = imgfile; 
     }
 
     if (image2Radio.checked) {
         set_imgfile('velocity.png');
-        //let imgfile = 'EVENTS/' + rows[eventnum-1]['datetime'].replace(' ', 'T') + '/seismic.png'
-        //imageDisplay.src = imgfile; 
     }    
 
     if (image3Radio.checked) {
         set_imgfile('displacement.png');
-        //let imgfile = 'EVENTS/' + rows[eventnum-1]['datetime'].replace(' ', 'T') + '/seismic.png'
-        //imageDisplay.src = imgfile; 
     }        
 
     if (image4Radio.checked) {
-        set_imgfile('stream_HDD.png');
-        //let imgfile = 'EVENTS/' + rows[eventnum-1]['datetime'].replace(' ', 'T') + '/seismic.png'
-        //imageDisplay.src = imgfile; 
+        set_imgfile('well_calibrated.png');
     } 
     
     if (image5Radio.checked) {
-        set_imgfile('stream_WLM.png');
-        //let imgfile = 'EVENTS/' + rows[eventnum-1]['datetime'].replace(' ', 'T') + '/seismic.png'
-        //imageDisplay.src = imgfile; 
+        set_imgfile('water_levels.png');
     }       
 
 
@@ -103,40 +90,30 @@ updatePage();
 image1Radio.addEventListener("change", function() {
     if (image1Radio.checked) {
         set_imgfile('infrasound.png');
-        //let imgfile = 'EVENTS/' + rows[eventnum-1]['datetime'].replace(' ', 'T') + '/infrasound.png'
-        //imageDisplay.src = imgfile; 
     }
 });
 
 image2Radio.addEventListener("change", function() {
     if (image2Radio.checked) {
         set_imgfile('velocity.png');
-        //let imgfile = 'EVENTS/' + rows[eventnum-1]['datetime'].replace(' ', 'T') + '/seismic.png'
-        //imageDisplay.src = imgfile; 
     }
 });
 
 image3Radio.addEventListener("change", function() {
     if (image3Radio.checked) {
         set_imgfile('displacement.png');
-        //let imgfile = 'EVENTS/' + rows[eventnum-1]['datetime'].replace(' ', 'T') + '/stream_HDD.png'
-        //imageDisplay.src = imgfile; 
     }
 });
 
 image4Radio.addEventListener("change", function() {
     if (image4Radio.checked) {
-        set_imgfile('stream_HDD.png');
-        //let imgfile = 'EVENTS/' + rows[eventnum-1]['datetime'].replace(' ', 'T') + '/stream_HDD.png'
-        //imageDisplay.src = imgfile; 
+        set_imgfile('well_calibrated.png');
     }
 });
 
 image5Radio.addEventListener("change", function() {
     if (image5Radio.checked) {
-        set_imgfile('stream_WLM.png');
-        //let imgfile = 'EVENTS/' + rows[eventnum-1]['datetime'].replace(' ', 'T') + '/stream_WLM.png'
-        //imageDisplay.src = imgfile; 
+        set_imgfile('water_levels.png');
     }
 });
 

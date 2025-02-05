@@ -1,6 +1,6 @@
 let jsonData = null
 //const csvFileUrl = 'http://131.247.211.6/usfseismiclab.org/html/rocketcat/launches.csv'; 
-const csvFileUrl = 'launches.csv'; 
+let csvFileUrl = 'launches.csv'; 
 async function loadCSV() {
     try {
         const response = await fetch(csvFileUrl);  // Load the CSV file from the server
@@ -139,5 +139,67 @@ function generateTable(data) {
 
 
 // Automatically load CSV and save to sessionStorage when the page loads
-window.onload = loadCSV;
+//window.onload = loadCSV;
 //console.log()
+
+// Function to fetch CSV files from the generated JSON file
+function fetchCSVFiles() {
+    loadCSV;
+    fetch('csv_list.json')  // Fetch the csv_list.json file
+        .then(response => response.json())
+        .then(files => {
+            const selectElement = document.getElementById('csvSelect');
+            files.forEach(file => {
+                const option = document.createElement('option');
+                option.value = file;
+                option.textContent = file;
+                selectElement.appendChild(option);
+            });
+        })
+        .catch(error => console.error('Error fetching CSV files:', error));
+}
+
+function updatetable(csvText) {
+    document.getElementById("jsonTable").textContent = ""
+    try {
+        const rows = removeEmptyRows(parseCSV(csvText));  // Parse the CSV text into rows
+        console.log('got rows')
+        try {
+            console.log(rows);
+            document.getElementById("jsonTable").appendChild(generateTable(rows));
+            sessionStorage.setItem('csvData', JSON.stringify(rows));  // Save to sessionStorage
+            //console.log(JSON.stringify(rows))
+        } catch (error) {
+            const errortext = new Text(`Error unknown for ${csvFileUrl}`);
+            document.getElementById("jsonTable").appendChild(errortext);                 
+        }
+    } catch (error) {
+        const errortext = new Text(`Error parsing ${csvFileUrl}`);
+        document.getElementById("jsonTable").appendChild(errortext);            
+    }
+
+}
+
+// Function to fetch and display content of the selected CSV file
+function fetchFileContent(fileName) {
+    csvFileUrl = fileName
+    var content = ""
+    fetch(fileName)
+        .then(response => response.text())
+        .then(content => {
+            updatetable(content)
+            //document.getElementById('fileContent').textContent = content;
+        })
+        .catch(error => console.error('Error fetching file content:', error));
+}
+
+// Event listener when a CSV file is selected from the dropdown
+document.getElementById('csvSelect').addEventListener('change', function() {
+    const selectedFile = this.value;
+    if (selectedFile) {
+        fetchFileContent(selectedFile);
+    }
+});
+
+// Load CSV files when the page loads
+window.onload = fetchCSVFiles;
