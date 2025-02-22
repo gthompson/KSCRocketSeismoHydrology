@@ -513,6 +513,44 @@ def move_files_to_sds_structure(source_dir, sds_base_dir, write=False, backup=Fa
             print(f"Skipping file (does not match SDS format): {filename}")
             continue           
 
+def check_files(source_dir, sds_base_dir, write=False, backup=False):
+    """ Moves MiniSEED files from a flat directory into the correct SDS archive structure. """
+    for filename in os.listdir(source_dir):
+
+        print(f'Processing {filename}')
+
+        file_path = os.path.join(source_dir, filename)
+
+        '''
+        network, station, location, channel, dtype, year, jday = parse_sds_filename(filename):
+        '''
+
+        # read miniseed file
+        try:
+            this_st = read(file_path, format='MSEED')
+        except Exception as e:
+            print(e)
+            print('Cannot read ',file_path)
+            continue
+
+        if len(this_st)==1:
+            fix_trace_id(this_st[0])
+            target_filename = os.path.basename(trace2correct_sdsfullpath(sds_base_dir, this_st[0]))
+            if target_filename != filename:
+                print(f'Should move {filename} to {target_filename}')
+                shutil.move(file_path, os.path.join(source_dir, target_filename))
+            '''
+            # check if target_path exists. if so, merge (and delete). otherwise move.
+            if os.path.isfile(target_path):
+                mergefile(sds_base_dir, file_path, target_path, write=write, backup=backup)
+            else:
+                movefile(file_path, target_path, write=write)
+            '''
+        else:
+            print(f'got {len(this_st)} traces')
+            continue
+
+
 
 if __name__ == "__main__":
     # Example usage
@@ -528,7 +566,8 @@ if __name__ == "__main__":
     networks = ['FL']
     write=True
     backup=write
-    main(sds_directory, networks=networks, write=write, backup=backup)
+    #main(sds_directory, networks=networks, write=write, backup=backup)
 
     source_directory = "/data/KSC/eventminiseedfiles"  # Change this to your flat directory
-    move_files_to_sds_structure(source_directory, sds_directory, write=write, backup=backup)
+    #move_files_to_sds_structure(source_directory, sds_directory, write=write, backup=backup)
+    check_files(source_directory, sds_directory, write=write, backup=backup)
