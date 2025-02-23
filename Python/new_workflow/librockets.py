@@ -14,17 +14,60 @@ def detectEvent(st):
     st2 = st.copy().filter('bandpass', freqmin=5, freqmax=16)
     return libseisGT.detect_network_event(st2, threshon=4, threshoff=1, sta=5, lta=100, pad=0.0, best_only=True)
 
-def sds2eventStream(launchtime, sdsclient, thisSDSobj, pretrig=3600, posttrig=3600):  
+
+
+# Function to print the directory-like structure
+def print_tree(nslc_list):
+    # Create a dictionary to store the structure
+    tree = {}
+    
+    # Build the nested tree structure
+    for network, station, location, channel in nslc_list:
+        if network not in tree:
+            tree[network] = {}
+        if station not in tree[network]:
+            tree[network][station] = {}
+        if location not in tree[network][station]:
+            tree[network][station][location] = []
+        tree[network][station][location].append(channel)
+    
+    # Function to print the tree recursively
+    def print_branch(branch, indent=""):
+        for key, value in branch.items():
+            if isinstance(value, dict):
+                # It's a directory, print it and recurse
+                print(f"{indent}{key}/")
+                print_branch(value, indent + "    ")
+            else:
+                # It's a list of channels
+                for channel in value:
+                    print(f"{indent}{key}/{channel}")
+    
+    # Print the root of the tree
+    print_branch(tree)
+
+
+
+def sds2eventStream(launchtime, sdsclient, thisSDSobj, pretrig=3600, posttrig=3600, networks=['*'], bandcodes=['GHDCESB'], show_available=True):  
       
     startt = obspy.UTCDateTime(launchtime) - pretrig
     endt = obspy.UTCDateTime(launchtime) + posttrig
-    st = try_different_waveform_loading_methods(sdsclient, thisSDSobj, startt, endt)
+    if show_available:
+        # Fetch the metadata for the specified date range
+        nslc_list = sdsclient.get_all_nslc(datetime=obspy.UTCDateTime((startt.timestamp+endt.timestamp)/2))
+        print_tree(nslc_list)
+
+    #st = try_different_waveform_loading_methods(sdsclient, thisSDSobj, startt, endt, network=network)
+    st = obspy.Stream()
+    for network in networks:
+        this_st = sdsclient.get_waveforms(network, "*", "*", f"{bandcodes}*", startt, endt)
+        st = st + this_st
     return st
 
-def try_different_waveform_loading_methods(sdsclient, thisSDSobj, startt, endt):
+def try_different_waveform_loading_methods(sdsclient, thisSDSobj, startt, endt, network='*'):
 
     # ObsPy SDS archive reader
-    st3 = sdsclient.get_waveforms("*", "*", "*", "[HDCES]*", startt, endt)
+    st3 = sdsclient.get_waveforms(network, "*", "*", "[HDCES]*", startt, endt)
 
     # My SDS class that wraps ObsPy SDS reader
     thisSDSobj.read(startt, endt, speed=1)
@@ -262,7 +305,7 @@ def plot_seismograms(st, outfile=None, bottomlabel=None, ylabels=None, units=Non
                 # PLOT THE DATA
                 axh[i].plot(t, y, lw=lw, color=colors[line_index], label=this_component)
                 axh[i].autoscale(enable=True, axis='x', tight=True)
-        if len(these_traces)==3:
+        if len(these_traces)==3 and len(all_ys)==3:
                 vector_amplitude = np.sqrt(all_ys[0]**2 + all_ys[1]**2 + all_ys[2]**2)
                 axh[i].plot(t, vector_amplitude, color='red', label='vector', lw=2)
                 axh[i].autoscale(enable=True, axis='x', tight=True)  
@@ -349,11 +392,11 @@ def remove_response(seismic_st, output='VEL'):
         this_st.remove_response(inventory=inv, output=output, pre_filt=None) #correct to velocity
     except:
         for tr in this_st:
-            print(tr)
+            #print(tr)
             try:
                 tr.remove_response(inventory=inv, output=output, pre_filt=None) #correct to displacement
             except Exception as e:
-                print(e)
+                #print(e)
                 this_st.remove(tr)    
     return this_st
 
@@ -373,11 +416,11 @@ def detect_incorrect_p2p_voltage_setting(st, stationratio=20.0, allratio=200.0):
     stations = ['BCHH*', 'BHP*']
 
     for station in stations:
-        print(station)
+        #print(station)
         st_station = st.select(station=station)
         if len(st_station)>2:
             amplitudes = np.array([np.nanpercentile(abs(tr.data), 95) for tr in st_station])
-            print(amplitudes)
+            #print(amplitudes)
 
             # Fit a GMM to the data with correction factor 1
             gmm = GaussianMixture(n_components=2)
@@ -389,7 +432,7 @@ def detect_incorrect_p2p_voltage_setting(st, stationratio=20.0, allratio=200.0):
             # Assign each data point to the component with the highest responsibility
             component_1_indices = np.where(responsibilities[:, 0] > responsibilities[:, 1])[0]
             component_2_indices = np.where(responsibilities[:, 1] > responsibilities[:, 0])[0]
-            print(component_1_indices, component_2_indices)
+            #print(component_1_indices, component_2_indices)
             #print(st)
 
             '''
@@ -408,7 +451,7 @@ def detect_incorrect_p2p_voltage_setting(st, stationratio=20.0, allratio=200.0):
             '''
 
             if len(component_2_indices)>0:
-                print(gmm.means_)
+                #print(gmm.means_)
                 mratio = gmm.means_[1]/gmm.means_[0]
                 if gmm.means_[0] > gmm.means_[1]:
                     for tr in [st[i] for i in component_1_indices]:
