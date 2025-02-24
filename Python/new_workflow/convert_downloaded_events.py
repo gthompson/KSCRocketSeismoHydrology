@@ -3,6 +3,12 @@ from obspy import read, Stream
 import numpy as np
 from datetime import datetime
 
+'''
+I think this is obsolete. it was used one time to chomp through the KSC EVENTS folders, and convert the SEED and MiniSEED files
+to SDS filename convention into a folder called /data/KSC/eventminiseedfiles. but then i ran a subsequent function in fix_SDS_archive to
+check these names again, and merge with the SDS archive
+'''
+
 # Function to check if the sampling rate matches the channel naming convention
 def validate_channel_and_sampling_rate(channel, sampling_rate):
     # SEED channel convention and corresponding expected sampling rates
