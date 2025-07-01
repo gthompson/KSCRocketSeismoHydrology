@@ -1,12 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from obspy.signal.cross_correlation import xcorr_max
+from obspy.signal.cross_correlation import xcorr_max, correlate
 from obspy.signal.util import next_pow_2
 from scipy.stats import linregress
 
 
 def analyze_seismo_acoustic_pair(tr_seis, tr_acou, title="Seismo-Acoustic Analysis",
-                                 freqmin=0.1, freqmax=10.0,
+                                 freqmin=0.1, freqmax=30.0,
                                  window_duration=60.0, sliding=True):
     """
     Compare infrasound and seismic Trace objects using time series, amplitude regression,
@@ -61,10 +61,11 @@ def analyze_seismo_acoustic_pair(tr_seis, tr_acou, title="Seismo-Acoustic Analys
 
     # === Amplitude regression ===
     slope, intercept, r_value, _, _ = linregress(x, y)
-
+    abs_x = abs(x)
+    abs_y = abs(y)
     plt.figure(figsize=(6, 6))
-    plt.scatter(x, y, s=1, alpha=0.3, label="Samples")
-    plt.plot(x, slope * x + intercept, color='red',
+    plt.scatter(abs_x, abs_y, s=1, alpha=0.3, label="Samples")
+    plt.plot(abs_x, slope * abs_x + intercept, color='red',
              label=f"Fit: y = {slope:.2f}x + {intercept:.2f}\nR² = {r_value**2:.3f}")
     plt.xlabel("Infrasound Amplitude")
     plt.ylabel("Seismic Amplitude")
@@ -92,7 +93,9 @@ def analyze_seismo_acoustic_pair(tr_seis, tr_acou, title="Seismo-Acoustic Analys
     plt.show()
 
     # === Cross-correlation ===
-    cc_max, lag_samples = xcorr_max(x, y, shift=minlen // 2)
+    #cc_max, lag_samples = xcorr_max(x, y, shift=minlen // 2)
+    cc = correlate(x, y, shift=minlen //2)
+    cc_max, lag_samples = xcorr_max(cc)
     lag_time = lag_samples / sr
     print(f"Global Max Cross-Correlation = {cc_max:.3f}, Time Lag = {lag_time:.3f} s")
 
@@ -109,7 +112,10 @@ def analyze_seismo_acoustic_pair(tr_seis, tr_acou, title="Seismo-Acoustic Analys
         for i in range(0, minlen - nwin, nstep):
             w1 = x[i:i + nwin]
             w2 = y[i:i + nwin]
-            cc, lag = xcorr_max(w1, w2, shift=nwin // 2)
+            
+            cc = correlate(w1, w2, shift=nwin // 2)
+            cc_max, lag = xcorr_max(cc)
+
             times_slide.append(i / sr)
             lags.append(lag / sr)
             corrs.append(cc)
@@ -131,6 +137,68 @@ def analyze_seismo_acoustic_pair(tr_seis, tr_acou, title="Seismo-Acoustic Analys
         plt.tight_layout()
         plt.show()
 
+from obspy import Trace
+import numpy as np
+import matplotlib.pyplot as plt
+from obspy.signal.invsim import cosine_taper
+
+def air_to_ground_coupling(seismic_trace: Trace,
+                            infrasound_trace: Trace,
+                            water_level: float = 0.01,
+                            plot: bool = False) -> Trace:
+    """
+    Deconvolve infrasound from seismic signal to estimate the air-to-ground coupling function.
+    
+    Parameters:
+        seismic_trace (Trace): ObsPy Trace of seismic component (Z/N/E)
+        infrasound_trace (Trace): ObsPy Trace of corresponding infrasound signal
+        water_level (float): Stabilization parameter for deconvolution (default 0.01)
+        plot (bool): If True, plot the resulting impulse response
+    
+    Returns:
+        Trace: Impulse response (air-to-ground coupling function) as a new ObsPy Trace
+    """
+    # Align traces
+    npts = min(len(seismic_trace.data), len(infrasound_trace.data))
+    dt = seismic_trace.stats.delta
+    if seismic_trace.stats.delta != infrasound_trace.stats.delta:
+        raise ValueError("Traces must have the same sampling rate")
+
+    # Apply taper to reduce edge artifacts
+    taper = cosine_taper(npts, 0.1)
+    s = seismic_trace.data[:npts] * taper
+    i = infrasound_trace.data[:npts] * taper
+
+    # FFT and spectral division
+    S = np.fft.rfft(s)
+    I = np.fft.rfft(i)
+
+    I_mag = np.abs(I)
+    I_stabilized = np.where(I_mag < water_level, water_level, I_mag)
+    H = S / (I_stabilized * np.exp(1j * np.angle(I)))  # Stabilized spectral division
+
+    # Inverse FFT to get coupling function
+    h = np.fft.irfft(H, n=npts)
+
+    # Wrap in ObsPy Trace
+    h_trace = Trace(data=h.astype(np.float32))
+    h_trace.stats.network = seismic_trace.stats.network
+    h_trace.stats.station = seismic_trace.stats.station
+    h_trace.stats.channel = f"H_{seismic_trace.stats.channel}"  # H for impulse response
+    h_trace.stats.sampling_rate = 1.0 / dt
+    h_trace.stats.starttime = seismic_trace.stats.starttime
+
+    if plot:
+        plt.figure(figsize=(10, 4))
+        plt.plot(h_trace.times(), h_trace.data)
+        plt.title(f"Air-to-Ground Coupling Function: {seismic_trace.stats.channel}")
+        plt.xlabel("Time (s)")
+        plt.ylabel("Amplitude")
+        plt.grid()
+        plt.tight_layout()
+        plt.show()
+
+    return h_trace
 
 from obspy.core import Stream, UTCDateTime
 
@@ -157,8 +225,8 @@ def main(stream: Stream, starttime: UTCDateTime, endtime: UTCDateTime):
 
     for station in stations:
         st_station = stream.select(station=station)
-        seismic_traces = st_station.select(channel="*Z")  # e.g., BHZ, HHZ, EHZ
-        infrasound_traces = st_station.select(channel="BD*", "DF*", "LD*")  # customize as needed
+        seismic_traces = st_station.select(channel="HH*")  # e.g., BHZ, HHZ, EHZ
+        infrasound_traces = st_station.select(channel="HD*")  # customize as needed
 
         if not seismic_traces or not infrasound_traces:
             print(f"Skipping station {station}: missing seismic or infrasound channel.")
@@ -167,6 +235,13 @@ def main(stream: Stream, starttime: UTCDateTime, endtime: UTCDateTime):
         for tr_seis in seismic_traces:
             for tr_acou in infrasound_traces:
                 print(f"\n>>> Station {station}: {tr_seis.id} vs {tr_acou.id}")
+                print(tr_seis, tr_acou)
+                print(tr_seis.stats, tr_acou.stats)
+
+                # 
+                try:
+                    analyze_seismo_acoustic_pair(
+                        tr_seis,                # deconvolve acoustic trace from seismic trace 
                 try:
                     analyze_seismo_acoustic_pair(
                         tr_seis,
@@ -176,14 +251,40 @@ def main(stream: Stream, starttime: UTCDateTime, endtime: UTCDateTime):
                 except Exception as e:
                     print(f"Failed analysis for {tr_seis.id} vs {tr_acou.id}: {e}")
 
+                        tr_acou,
+                        title=f"{station}: {tr_seis.stats.channel} vs {tr_acou.stats.channel}"
+                    )
+                except Exception as e:
+                    print(f"Failed analysis for {tr_seis.id} vs {tr_acou.id}: {e}")
+
+                # Deconvolve acoustic trace from seismic trace
+                try:
+                    h_trace = air_to_ground_coupling(
+                        seismic_trace=tr_seis,
+                        infrasound_trace=tr_acou,
+                        water_level=0.01,
+                        plot=True  # Set to False if you don’t want immediate plotting
+                    )
+                    print(f"Deconvolution complete: {h_trace.id}")
+                    h_trace.write(f"{station}_{tr_seis.stats.channel}_vs_{tr_acou.stats.channel}_impulse.mseed", format="MSEED")
+
+                except Exception as e:
+                    print(f"Deconvolution failed for {tr_seis.id} vs {tr_acou.id}: {e}")
+
+
 if __name__ == "__main__":
     from obspy import read, UTCDateTime
+    eventtime = "2022-11-01T13:41:00"
 
     # Load your full dataset
-    st = read("launch_data_all_stations.mseed")
+    stS = read(f"/data/KSC/EROSION/EVENTS/{eventtime}/seismic.mseed")
+    stI = read(f"/data/KSC/EROSION/EVENTS/{eventtime}/infrasound.mseed")
+    st = stS + stI
+    print(st)
+    input('ENTER to continue')
 
     # Define time window (e.g., around a rocket launch)
-    t0 = UTCDateTime("2024-06-05T14:00:00")
+    t0 = UTCDateTime(eventtime)
     t1 = t0 + 90  # 90-second window
 
     # Run the analysis
