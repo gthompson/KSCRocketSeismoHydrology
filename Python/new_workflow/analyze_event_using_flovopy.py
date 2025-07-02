@@ -116,7 +116,8 @@ def main(stream, starttime, endtime, inventory):
     stream.write('/home/thompsong/Dropbox/launchraw.mseed')
     stream = stream.copy().trim(starttime, endtime)
     stream.write('/home/thompsong/Dropbox/launchrawtrimmed.mseed')
-    preprocess_stream(stream, inv=inventory, filterType='highpass', freq=[0.1], outputType="DEF", bool_clean=True, taper_fraction=0.05, bool_detrend=True)
+    preprocess_stream(stream, inv=inventory, filterType='highpass', freq=[0.1, 100.0], 
+                      outputType="DEF", bool_clean=True, taperFraction=0.05, bool_detrend=True)
     stream.write('/home/thompsong/Dropbox/launchpreprocessed.mseed')
     stream.plot(equal_scale=False)
     remove_low_quality_traces(stream, quality_threshold=4.0, verbose=True)
@@ -126,7 +127,7 @@ def main(stream, starttime, endtime, inventory):
     est.ampengfft()
     stream.write('/home/thompsong/Dropbox/launchAEF.pkl', format='PICKLE')
     print(est)
-    input('ENTER to continue')
+    #input('ENTER to continue')
 
 
 
@@ -146,7 +147,8 @@ def main(stream, starttime, endtime, inventory):
         print(tr.stats)
         #tr.plot()
         print()
-
+    stream.write('/home/thompsong/Dropbox/launchAEF2.pkl', format='PICKLE')
+    return
     stations = set(tr.stats.station for tr in stream)
     all_metrics = []
     trace_metrics = []
@@ -228,8 +230,8 @@ if __name__ == "__main__":
         inventory2dataless_and_resp(inv, output_dir=respdir,
                                 stationxml_seed_converter_jar="/home/thompsong/stationxml-seed-converter.jar")
     eventtime = "2022-11-01T13:41:00"
-    t0 = UTCDateTime(eventtime) - 60
-    t1 = t0 + 150
+    t0 = UTCDateTime(eventtime) - 300
+    t1 = t0 + 500
 
     stS = read(f"/data/KSC/EROSION/EVENTS/{eventtime}/seismic.mseed")
     stI = read(f"/data/KSC/EROSION/EVENTS/{eventtime}/infrasound.mseed")
