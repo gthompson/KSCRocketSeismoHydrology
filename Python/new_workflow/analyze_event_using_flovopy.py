@@ -8,156 +8,11 @@ from scipy.stats import linregress
 import os
 from flovopy.core.preprocessing import preprocess_stream, remove_low_quality_traces
 from flovopy.core.enhanced import EnhancedStream
-"""
-from flovopy.core.usf import NRL2inventory
 
-def get_stationXML_inventory(xmlfile='KSC.xml'):
-    preseconds=120
-    eventseconds=120
-    postseconds=120
-    taperseconds=600
-
-    # need to add a detector for sonic booms too!
-    # 2022 responses
-    ondate = UTCDateTime(2016, 2, 24)
-    offdate = UTCDateTime(2022,12,5)
-
-    if os.path.isfile(xmlfile):
-        inv = read_inventory(xmlfile)
-    else:
-
-        # seismic channels
-        invs1 = NRL2inventory('FL', 'S39A1', '00', ['HHZ', 'HHN', 'HHE'], datalogger='Centaur', sensor='TCP', Vpp=40, fsamp=100.0, ondate=ondate, offdate=offdate)
-        invs2 = NRL2inventory('FL', 'S39A2', '00', ['HHZ', 'HHN', 'HHE'], datalogger='Centaur', sensor='TCP', Vpp=40, fsamp=100.0, ondate=ondate, offdate=offdate)
-        invs3 = NRL2inventory('FL', 'S39A3', '00', ['HHZ', 'HHN', 'HHE'], datalogger='Centaur', sensor='TCP', Vpp=40, fsamp=100.0, ondate=ondate, offdate=offdate)
-        invs4 = NRL2inventory('FL', 'BCHH3', '00', ['HHZ', 'HHN', 'HHE'], datalogger='Centaur', sensor='TCP', Vpp=40, fsamp=100.0, ondate=ondate, offdate=offdate)
-        invs5 = NRL2inventory('FL', 'BCHH4', '10', ['HHZ', 'HHN', 'HHE'], datalogger='Centaur', sensor='TCP', Vpp=40, fsamp=100.0, ondate=ondate, offdate=offdate)
-        seismicinv = invs1 + invs2 + invs3 + invs4 + invs5
-
-        # infrasound
-        date_BCHH3_change = UTCDateTime(2022,5,26) # looking at files, it seems we actually have no data for BCHH3 after this - we just called it BCHH4
-        invi1 = NRL2inventory('FL', 'S39A1', '10', ['HDF'], datalogger='Centaur', sensor='infraBSU', Vpp=1, fsamp=100.0, ondate=ondate, offdate=offdate)
-        invi2 = NRL2inventory('FL', 'S39A2', '10', ['HDF'], datalogger='Centaur', sensor='infraBSU', Vpp=1, fsamp=100.0, ondate=ondate, offdate=offdate)
-        invi3 = NRL2inventory('FL', 'S39A3', '10', ['HDF'], datalogger='Centaur', sensor='infraBSU', Vpp=1, fsamp=100.0, ondate=ondate, offdate=offdate)
-        invi4 = NRL2inventory('FL', 'BCHH2', '10', ['HD4'], datalogger='Centaur', sensor='Chap', Vpp=40, fsamp=100.0, ondate=ondate, offdate=offdate)
-        invi5 = NRL2inventory('FL', 'BCHH2', '10', ['HD5', 'HD6'], datalogger='Centaur', sensor='infraBSU', Vpp=40, fsamp=100.0, ondate=ondate, offdate=offdate)
-        invi6 = NRL2inventory('FL', 'BCHH2', '10', ['HD7', 'HD8', 'HD9'], datalogger='Centaur', sensor='infraBSU', Vpp=1, fsamp=100.0, ondate=ondate, offdate=offdate)
-        invi7 = NRL2inventory('FL', 'BCHH3', '10', ['HDF'], datalogger='Centaur', sensor='infraBSU', Vpp=1, fsamp=100.0, ondate=ondate, offdate=date_BCHH3_change)
-        invi8 = NRL2inventory('FL', 'BCHH3', '10', ['HDF'], datalogger='Centaur', sensor='infraBSU', Vpp=40, fsamp=100.0, ondate=date_BCHH3_change, offdate=offdate)
-        invi9 = NRL2inventory('FL', 'BCHH4', '00', ['HDF', 'HD2', 'HD3'], datalogger='Centaur', sensor='infraBSU', Vpp=1, fsamp=100.0, ondate=ondate, offdate=offdate)
-
-        infrainv = invi1 + invi2 + invi3 + invi4 + invi5 + invi6 + invi7 + invi8 + invi9
+#from obspy import UTCDateTime, read_inventory
+from flovopy.core.usf import get_stationXML_inventory, inventory2dataless_and_resp
 
 
-        for station_num in range(1,9,1):
-            # 2018-2021
-            station = f'BHP{station_num}'
-            invpasscal = NRL2inventory('1R', station, '', ['EH1', 'EH2', 'EHZ'], datalogger='RT130', sensor='L-22', fsamp=100.0, ondate=ondate, offdate=offdate)
-            seismicinv = seismicinv + invpasscal
-        for station in ['FIREP', 'TANKP']:
-            invpasscal = NRL2inventory('1R', station, '', ['EH1', 'EH2', 'EHZ'], datalogger='RT130', sensor='L-22', fsamp=100.0, ondate=ondate, offdate=offdate)
-            seismicinv = seismicinv + invpasscal
-
-        inv0 = NRL2inventory('FL', 'BCHH1', '0', ['HHZ', 'HHN', 'HHE'], datalogger='Centaur', sensor='TCP', Vpp=40, fsamp=100.0, ondate=ondate, offdate=offdate)
-        seismicinv = seismicinv + inv0
-        inv1 = NRL2inventory('FL', 'BCHH1', '0', ['HD1', 'HD2', 'HD3'], datalogger='Centaur', sensor='infraBSU', Vpp=40, fsamp=100.0, ondate=ondate, offdate=offdate)
-        infrainv = infrainv + inv1
-
-        inv2 = NRL2inventory('FL', 'BCHH', '00', ['GHZ', 'GHN', 'GHE'], datalogger='Centaur', sensor='TCP', Vpp=40, fsamp=2000.0, ondate=ondate, offdate=offdate)
-        seismicinv = seismicinv + inv2
-        inv3 = NRL2inventory('FL', 'BCHH', '10', ['GD1', 'GD2', 'GD3'], datalogger='Centaur', sensor='infraBSU', Vpp=40, fsamp=2000.0, ondate=ondate, offdate=offdate)
-        infrainv = infrainv + inv3
-
-        for station in ['BCHH', 'FIRE', 'TANK']:
-            inv4 = NRL2inventory('FL', station, '00', ['DHZ', 'DHN', 'DHE'], datalogger='Centaur', sensor='TCP', Vpp=40, fsamp=250.0, ondate=ondate, offdate=offdate)
-            seismicinv = seismicinv + inv4
-            inv5 = NRL2inventory('FL', station, '10', ['DD1', 'DD2', 'DD3'], datalogger='Centaur', sensor='infraBSU', Vpp=40, fsamp=250.0, ondate=ondate, offdate=offdate)
-            infrainv = infrainv + inv5
-
-        inv6 = NRL2inventory('FL', 'BCHH2', '10', ['HD4', 'HD5', 'HD6', 'HD7', 'HD8', 'HD9'], datalogger='Centaur', sensor='infraBSU', Vpp=40, fsamp=250.0, ondate=ondate, offdate=offdate)
-        infrainv = infrainv + inv6
-
-
-        inv = seismicinv + infrainv
-
-        inv.write(xmlfile, format='STATIONXML')
-        return inv
-    
-"""
-from obspy import UTCDateTime, read_inventory
-from flovopy.core.usf import NRL2inventory, apply_coordinates_from_csv, merge_duplicate_stations_and_patch_site, write_inventory_as_resp
-import os
-
-def get_stationXML_inventory(
-    xmlfile='KSC.xml',
-    seedfile='KSC.dataless',
-    respdir='RESP/',
-    coord_csv='station_coordinates.csv',
-    overwrite=False
-):
-    from obspy import Inventory
-
-    if os.path.isfile(xmlfile) and not overwrite:
-        inv = read_inventory(xmlfile)
-        print(f"[INFO] Loaded existing StationXML: {xmlfile}")
-    else:
-        print("[INFO] Creating new inventory from USF definitions...")
-        ondate = UTCDateTime(2016, 2, 24)
-        offdate = UTCDateTime(2022, 12, 5)
-        date_BCHH3_change = UTCDateTime(2022, 5, 26)
-
-        seismicinv = Inventory()
-        infrainv = Inventory()
-
-        # === Seismic inventory ===
-        for code in ['S39A1', 'S39A2', 'S39A3']:
-            seismicinv += NRL2inventory('FL', code, '00', ['HHZ', 'HHN', 'HHE'], datalogger='Centaur', sensor='TCP', Vpp=40, fsamp=100.0, ondate=ondate, offdate=offdate)
-        seismicinv += NRL2inventory('FL', 'BCHH3', '00', ['HHZ', 'HHN', 'HHE'], datalogger='Centaur', sensor='TCP', Vpp=40, fsamp=100.0, ondate=ondate, offdate=offdate)
-        seismicinv += NRL2inventory('FL', 'BCHH4', '10', ['HHZ', 'HHN', 'HHE'], datalogger='Centaur', sensor='TCP', Vpp=40, fsamp=100.0, ondate=ondate, offdate=offdate)
-
-        for station_num in range(1, 9):
-            seismicinv += NRL2inventory('1R', f'BHP{station_num}', '', ['EH1', 'EH2', 'EHZ'], datalogger='RT130', sensor='L-22', fsamp=100.0, ondate=ondate, offdate=offdate)
-        for station in ['FIREP', 'TANKP']:
-            seismicinv += NRL2inventory('1R', station, '', ['EH1', 'EH2', 'EHZ'], datalogger='RT130', sensor='L-22', fsamp=100.0, ondate=ondate, offdate=offdate)
-        seismicinv += NRL2inventory('FL', 'BCHH1', '0', ['HHZ', 'HHN', 'HHE'], datalogger='Centaur', sensor='TCP', Vpp=40, fsamp=100.0, ondate=ondate, offdate=offdate)
-        seismicinv += NRL2inventory('FL', 'BCHH', '00', ['GHZ', 'GHN', 'GHE'], datalogger='Centaur', sensor='TCP', Vpp=40, fsamp=2000.0, ondate=ondate, offdate=offdate)
-        for station in ['BCHH', 'FIRE', 'TANK']:
-            seismicinv += NRL2inventory('FL', station, '00', ['DHZ', 'DHN', 'DHE'], datalogger='Centaur', sensor='TCP', Vpp=40, fsamp=250.0, ondate=ondate, offdate=offdate)
-
-        # === Infrasound inventory ===
-        for code in ['S39A1', 'S39A2', 'S39A3']:
-            infrainv += NRL2inventory('FL', code, '10', ['HDF'], datalogger='Centaur', sensor='infraBSU', Vpp=1, fsamp=100.0, ondate=ondate, offdate=offdate)
-
-        infrainv += NRL2inventory('FL', 'BCHH2', '10', ['HD4'], datalogger='Centaur', sensor='Chap', Vpp=40, fsamp=100.0, ondate=ondate, offdate=offdate)
-        infrainv += NRL2inventory('FL', 'BCHH2', '10', ['HD5', 'HD6'], datalogger='Centaur', sensor='infraBSU', Vpp=40, fsamp=100.0, ondate=ondate, offdate=offdate)
-        infrainv += NRL2inventory('FL', 'BCHH2', '10', ['HD7', 'HD8', 'HD9'], datalogger='Centaur', sensor='infraBSU', Vpp=1, fsamp=100.0, ondate=ondate, offdate=offdate)
-        infrainv += NRL2inventory('FL', 'BCHH3', '10', ['HDF'], datalogger='Centaur', sensor='infraBSU', Vpp=1, fsamp=100.0, ondate=ondate, offdate=date_BCHH3_change)
-        infrainv += NRL2inventory('FL', 'BCHH3', '10', ['HDF'], datalogger='Centaur', sensor='infraBSU', Vpp=40, fsamp=100.0, ondate=date_BCHH3_change, offdate=offdate)
-        infrainv += NRL2inventory('FL', 'BCHH4', '00', ['HDF', 'HD2', 'HD3'], datalogger='Centaur', sensor='infraBSU', Vpp=1, fsamp=100.0, ondate=ondate, offdate=offdate)
-        infrainv += NRL2inventory('FL', 'BCHH1', '0', ['HD1', 'HD2', 'HD3'], datalogger='Centaur', sensor='infraBSU', Vpp=40, fsamp=100.0, ondate=ondate, offdate=offdate)
-        infrainv += NRL2inventory('FL', 'BCHH', '10', ['GD1', 'GD2', 'GD3'], datalogger='Centaur', sensor='infraBSU', Vpp=40, fsamp=2000.0, ondate=ondate, offdate=offdate)
-        for station in ['BCHH', 'FIRE', 'TANK']:
-            infrainv += NRL2inventory('FL', station, '10', ['DD1', 'DD2', 'DD3'], datalogger='Centaur', sensor='infraBSU', Vpp=40, fsamp=250.0, ondate=ondate, offdate=offdate)
-        infrainv += NRL2inventory('FL', 'BCHH2', '10', ['HD4', 'HD5', 'HD6', 'HD7', 'HD8', 'HD9'], datalogger='Centaur', sensor='infraBSU', Vpp=40, fsamp=250.0, ondate=ondate, offdate=offdate)
-
-        # Combine
-        inv = seismicinv + infrainv
-
-        # Apply coordinates from CSV
-        if os.path.isfile(coord_csv):
-            apply_coordinates_from_csv(inv, coord_csv)
-
-        # Merge + site patch
-        inv = merge_duplicate_stations_and_patch_site(inv)
-
-        # Save StationXML
-        inv.write(xmlfile, format='STATIONXML', validate=True)
-        print(f"[OK] Wrote StationXML to {xmlfile}")
-
-        # Write RESP
-        write_inventory_as_resp(inv, seed_tempfile=seedfile, resp_outdir=respdir)
-
-    return inv
 
 
 
@@ -208,7 +63,7 @@ def trace_basic_metrics(tr):
         "dominant_frequency": dom_freq
     }
 
-def air_to_ground_coupling(seismic_trace, infrasound_trace, water_level=0.01, plot=False):
+def air_to_ground_coupling(seismic_trace, infrasound_trace, water_level=0.01, taper_fraction = 0.05, plot=False):
     
     npts = min(len(seismic_trace.data), len(infrasound_trace.data))
     dt = seismic_trace.stats.delta
@@ -224,8 +79,19 @@ def air_to_ground_coupling(seismic_trace, infrasound_trace, water_level=0.01, pl
     I = np.fft.rfft(i)
 
     I_mag = np.abs(I)
-    I_stabilized = np.where(I_mag < water_level, water_level, I_mag)
+
+
+    # Optionally stabilize I first to prevent division by zero
+    I_stabilized = np.where(np.abs(I) < 1e-10, 1e-10, I)
+
+    # Clean non-finite values from I and S
+    I_stabilized = np.nan_to_num(I_stabilized, nan=1e-10, posinf=1e10, neginf=-1e10)
+    S = np.nan_to_num(S, nan=0.0, posinf=0.0, neginf=0.0)
+
+    # Now safe to compute
     H = S / (I_stabilized * np.exp(1j * np.angle(I)))
+
+
     h = np.fft.irfft(H, n=npts)
 
     h_trace = Trace(data=h.astype(np.float32))
@@ -247,18 +113,22 @@ def air_to_ground_coupling(seismic_trace, infrasound_trace, water_level=0.01, pl
 
 
 def main(stream, starttime, endtime, inventory):
+    stream.write('/home/thompsong/Dropbox/launchraw.mseed')
     stream = stream.copy().trim(starttime, endtime)
-    preprocess_stream(stream, inv=inventory, outputType="VEL", bool_clean=True)
+    stream.write('/home/thompsong/Dropbox/launchrawtrimmed.mseed')
+    preprocess_stream(stream, inv=inventory, filterType='highpass', freq=[0.1], outputType="DEF", bool_clean=True, taper_fraction=0.05, bool_detrend=True)
+    stream.write('/home/thompsong/Dropbox/launchpreprocessed.mseed')
+    stream.plot(equal_scale=False)
     remove_low_quality_traces(stream, quality_threshold=4.0, verbose=True)
     est = EnhancedStream(stream=stream)
     print(est)
+    stream.write('/home/thompsong/Dropbox/launchenhanced.pkl', format='PICKLE')
     est.ampengfft()
+    stream.write('/home/thompsong/Dropbox/launchAEF.pkl', format='PICKLE')
     print(est)
     input('ENTER to continue')
 
-    stations = set(tr.stats.station for tr in stream)
-    all_metrics = []
-    trace_metrics = []
+
 
     for tr in est:
         try:
@@ -274,7 +144,12 @@ def main(stream, starttime, endtime, inventory):
         except Exception as e:
             print(f"Trace metrics failed for {tr.id}: {e}")
         print(tr.stats)
+        #tr.plot()
         print()
+
+    stations = set(tr.stats.station for tr in stream)
+    all_metrics = []
+    trace_metrics = []
 
     for station in stations:
         st_station = est.select(station=station)
@@ -282,6 +157,8 @@ def main(stream, starttime, endtime, inventory):
 
         for i, tr1 in enumerate(traces):
             for j, tr2 in enumerate(traces):
+                these_traces = Stream(traces=[tr1, tr2])
+                these_traces.plot(equal_scale=False)
                 try:
                     trace1_id = tr1.id
                     trace2_id = tr2.id
@@ -298,8 +175,10 @@ def main(stream, starttime, endtime, inventory):
                         "type": kind
                     }
 
-                    if kind == "seis-acou":
-                        h_trace = air_to_ground_coupling(tr1, tr2)
+
+                    #if kind == "seis-acou":
+                    if kind:
+                        h_trace = air_to_ground_coupling(tr1, tr2, plot=True)
                         peak_amp, lag, duration = summarize_coupling_function(h_trace)
                         peak_freq = cross_spectral_peak(tr1, tr2)
 
@@ -337,18 +216,24 @@ def main(stream, starttime, endtime, inventory):
     return df, df_traces
 
 if __name__ == "__main__":
+    xmlfile = '/data/station_metadata/KSC.xml'
+    #dataless = '/data/station_metadata/KSC.dataless'
+    respdir = '/data/station_metadata/RESP'   
+    if os.path.isfile(xmlfile):
+        inv = read_inventory(xmlfile)
+        print(f"[INFO] Loaded existing StationXML: {xmlfile}")
+    else:
+        print("[INFO] Creating new inventory from USF definitions...")
+        inv = get_stationXML_inventory(xmlfile=xmlfile, overwrite=True)
+        inventory2dataless_and_resp(inv, output_dir=respdir,
+                                stationxml_seed_converter_jar="/home/thompsong/stationxml-seed-converter.jar")
     eventtime = "2022-11-01T13:41:00"
-    t0 = UTCDateTime(eventtime)
-    t1 = t0 + 90
+    t0 = UTCDateTime(eventtime) - 60
+    t1 = t0 + 150
 
     stS = read(f"/data/KSC/EROSION/EVENTS/{eventtime}/seismic.mseed")
     stI = read(f"/data/KSC/EROSION/EVENTS/{eventtime}/infrasound.mseed")
-    inventory = get_stationXML_inventory(
-        xmlfile='/data/KSC/station_metadata/KSC.xml',
-        seedfile='/data/KSC/station_metadata/KSC.dataless',
-        respdir='/data/KSC/station_metadata/RESP/',
-        coord_csv='/data/KSC/station_metadata/station_coordinates.csv',
-        )
+
     st = stS + stI
 
-    df_results, df_trace_metrics = main(st, t0, t1, inventory)
+    df_results, df_trace_metrics = main(st, t0, t1, inv)
