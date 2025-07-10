@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-
+import os
 import sys
-from flovopy.core.sds.fix_sds_archive import fix_sds_archive
+from flovopy.sds.fix_sds_archive import fix_sds_archive
 
 def main():
     # Define input/output paths and metadata file
@@ -15,7 +15,7 @@ def main():
     start_date = None      # e.g., "2020-01-01"
     end_date = None        # e.g., "2022-01-01"
     write = True           # Set to False for dry-run
-    log_file = "fix_sds_archive.log"
+    log_file = os.path.join(dest_sds,"fix_sds_archive.log")
 
     # Call the function
     fix_sds_archive(
