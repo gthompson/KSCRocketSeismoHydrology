@@ -13,7 +13,7 @@ def main():
 
     #src_dir='/raid/data/KennedySpaceCenter/beforePASSCAL/CONTINUOUS/2016'
     src_dir='/data/KSC/beforePASSCAL/CONTINUOUS'
-    dest_sds='/data/SDS_KSC'
+    dest_sds='/data/SDS_KSC2'
     
     excel_metadata_file = "/home/thompsong/Dropbox/DATA/station_metadata/ksc_stations_master_v2.xls"
     #log_file = os.path.join(dest_sds,"raid_data_KSC_C.log")
@@ -87,8 +87,8 @@ def main():
         #custom_file_list=None,
         #recursive=True,
         #file_glob="*.mseed",
-        n_processes=7,
-        debug=True,                 
+        n_processes=6,
+        debug=False,                 
     )
 
 
