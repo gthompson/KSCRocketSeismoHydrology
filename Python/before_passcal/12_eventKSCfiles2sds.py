@@ -6,8 +6,8 @@ import traceback
 def main():
 
     #src_dir='/raid/data/KennedySpaceCenter/beforePASSCAL/CONTINUOUS/2016'
-    src_dir='/data/KSC/beforePASSCAL/CONTINUOUS'
-    dest_sds='/data/SDS_hourlyKSChal'
+    src_dir = '/data/KSC/event_files_to_convert_to_sds'
+    dest_sds='/data/SDS_eventKSChal'
     
     excel_metadata_file = "/home/thompsong/Dropbox/DATA/station_metadata/ksc_stations_master_v2.xls"
 
@@ -18,12 +18,8 @@ def main():
     end_date = "2026-01-10"        # e.g., "2022-01-01"
 
 
-    file_list = []
-    for YYDIR in sorted(glob.glob(os.path.join(src_dir, '20[0-9][0-9]'))):
-        for MMDIR in sorted(glob.glob(os.path.join(YYDIR, '[0-9][0-9]'))):
-            for DDDIR in sorted(glob.glob(os.path.join(MMDIR, '[0-9][0-9]'))):
-                for f in sorted(glob.glob(os.path.join(DDDIR, '*FL*'))):
-                    file_list.append(f)
+    file_list = sorted(glob.glob(os.path.join(src_dir, '*')))
+
 
     try:
         write_sds_archive(
