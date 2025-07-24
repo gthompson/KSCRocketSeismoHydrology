@@ -7,7 +7,7 @@ def main():
 
     #src_dir='/raid/data/KennedySpaceCenter/beforePASSCAL/CONTINUOUS/2016'
     src_dir='/data/KSC/beforePASSCAL/CONTINUOUS'
-    dest_sds='/data/SDS_hourlyKSChal'
+    dest_sds='/data/SDS_hourlyKSChal_v2'
     
     excel_metadata_file = "/home/thompsong/Dropbox/DATA/station_metadata/ksc_stations_master_v2.xls"
 

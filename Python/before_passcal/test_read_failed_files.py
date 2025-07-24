@@ -1,3 +1,37 @@
+import pandas as pd
+from obspy import read
+import os
+
+def try_read_and_plot_failed_files(excel_path):
+    """
+    Attempts to read and plot waveform files listed as 'failed' in a spreadsheet.
+
+    Parameters
+    ----------
+    excel_path : str
+        Path to an .xlsx or .csv file containing columns: filepath, status, etc.
+    """
+    df = pd.read_excel(excel_path)
+    failed_df = df[df["status"].str.lower() == "failed"]
+
+    '''
+    for _, row in failed_df.iterrows():
+        print('')
+        filepath = row["filepath"]
+        try:
+            st = read(filepath)
+            print(f"✅ Successfully read: {filepath}")
+            print(st)
+            outfile = os.path.join('/home/thompsong/work', os.path.basename(filepath) + ".png")
+            st.plot(equal_scale=False, outfile=outfile)
+            print(f"🖼️  Saved plot to {outfile}")
+        except Exception as e:
+            print(f"❌ Failed to read {filepath}: {e}")
+    '''
+    return failed_df['filepath'].to_list()
+
+
+
 from flovopy.sds.write_sds_archive_multiprocessing import write_sds_archive
 import os 
 import glob
@@ -7,7 +41,7 @@ def main():
 
     #src_dir='/raid/data/KennedySpaceCenter/beforePASSCAL/CONTINUOUS/2016'
     src_dir = '/data/KSC/event_files_to_convert_to_sds'
-    dest_sds='/data/SDS_eventKSChal_v2'
+    dest_sds='/data/SDS_failedeventKSChal'
     
     excel_metadata_file = "/home/thompsong/Dropbox/DATA/station_metadata/ksc_stations_master_v2.xls"
 
@@ -18,7 +52,7 @@ def main():
     end_date = "2026-01-10"        # e.g., "2022-01-01"
 
 
-    file_list = sorted(glob.glob(os.path.join(src_dir, '*')))
+
 
 
     try:
@@ -41,6 +75,5 @@ def main():
         print(f'Outer most exception caught: {e}')
         traceback.print_exc()
 
-
-if __name__ == "__main__":
-    main()
+file_list =  sorted(try_read_and_plot_failed_files('/data/SDS_eventKSChal/processing_log.xlsx'))
+main()
