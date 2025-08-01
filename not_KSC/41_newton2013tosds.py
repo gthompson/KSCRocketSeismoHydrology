@@ -11,8 +11,8 @@ def main():
     # Optional filtering parameters (customize if needed)
     networks =  ['AM', '1R', 'XA', 'FL']
     stations = '*'
-    start_date = "2016-01-01"      # e.g., "2020-01-01"
-    end_date = "2026-01-10"        # e.g., "2022-01-01"
+    start_date = "2013-01-01"      # e.g., "2020-01-01"
+    end_date = "2014-01-10"        # e.g., "2022-01-01"
 
     # Now process the 2016-8 data which is already in an SDS archive
     write_sds_archive(
