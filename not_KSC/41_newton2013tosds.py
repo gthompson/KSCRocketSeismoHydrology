@@ -4,9 +4,9 @@ def main():
 
     #src_dir='/raid/data/KennedySpaceCenter/beforePASSCAL/CONTINUOUS/2016'
     src_dir='/raid/data/SDS'
-    dest_sds='/raid/data/SDS_KSC_newton'
+    dest_sds='/raid/data/SDS_KSC_newton_2013'
     
-    excel_metadata_file = "/home/thompsong/Developer/KSCRocketSeismoHydrology/station_metadata/ksc_stations_master_v2.xlsx"
+    excel_metadata_file = "/home/thompsong/Developer/KSCRocketSeismoHydrology/3_stationxml/ksc_stations_master_v2.xlsx"
 
     # Optional filtering parameters (customize if needed)
     networks =  ['AM', '1R', 'XA', 'FL']
