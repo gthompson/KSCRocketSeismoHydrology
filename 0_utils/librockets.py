@@ -7,6 +7,7 @@ import header
 paths = header.setup_environment()
 sys.path.append(os.path.join(paths['Developer'], 'SoufriereHillsVolcano', 'lib'))
 import libseisGT
+from flovopy.sds.sds_utils import sds2eventStream
 
 
 
@@ -48,21 +49,11 @@ def print_tree(nslc_list):
 
 
 
+'''
 def sds2eventStream(launchtime, sdsclient, thisSDSobj, pretrig=3600, posttrig=3600, networks=['*'], bandcodes=['GHDCESB'], show_available=True):  
-      
-    startt = obspy.UTCDateTime(launchtime) - pretrig
-    endt = obspy.UTCDateTime(launchtime) + posttrig
-    if show_available:
-        # Fetch the metadata for the specified date range
-        nslc_list = sdsclient.get_all_nslc(datetime=obspy.UTCDateTime((startt.timestamp+endt.timestamp)/2))
-        print_tree(nslc_list)
-
-    #st = try_different_waveform_loading_methods(sdsclient, thisSDSobj, startt, endt, network=network)
-    st = obspy.Stream()
-    for network in networks:
-        this_st = sdsclient.get_waveforms(network, "*", "*", f"{bandcodes}*", startt, endt)
-        st = st + this_st
-    return st
+moved to flovopy.sds.sds method
+'''      
+    
 
 def try_different_waveform_loading_methods(sdsclient, thisSDSobj, startt, endt, network='*'):
 
@@ -78,21 +69,8 @@ def try_different_waveform_loading_methods(sdsclient, thisSDSobj, startt, endt, 
     return st3
     
 def combine_streams(stB, stA):
-    appended = False
-    for trA in stA:
-        found = False
-        for trB in stB:
-            if trA.stats.station == trB.stats.station and trA.stats.location == trB.stats.location and trA.stats.channel == trB.stats.channel:
-                if trA.stats.network == '':
-                    trA.stats.network = trB.stats.network
-                if trA.stats.starttime >= trB.stats.starttime and trA.stats.endtime <= trB.stats.endtime:
-                    found = True
-                    break
-        if not found:
-            stB.append(trA)
-            appended = True
-    if appended:
-        stB.merge(method=0, fill_value=0)
+    combined = stB + stA
+    smart_merge(combined, strategy='both', allow_timeshift=True)
 
 '''
 def clean(st, taperseconds):
@@ -198,19 +176,45 @@ def despike_trace(trace):
 
 
 
-def remove_response(seismic_st, output='VEL', pre_filt=None):
-    this_st = seismic_st.copy()
-    try:
-        this_st.remove_response(inventory=inv, output=output, pre_filt=pre_filt) #correct to velocity
-    except:
-        for tr in this_st:
-            #print(tr)
-            try:
-                tr.remove_response(inventory=inv, output=output, pre_filt=pre_filt) #correct to displacement
-            except Exception as e:
-                #print(e)
-                this_st.remove(tr)    
-    return this_st
+from flovopy.core.preprocessing import clean_stream
+
+def remove_response(seismic_st, inv, output='VEL', pre_filt=None, verbose=False):
+    """
+    Removes instrument response from a Stream using robust trace-wise handling.
+
+    Parameters:
+    -----------
+    seismic_st : obspy.Stream
+        Input stream to process.
+
+    inv : obspy.Inventory
+        Instrument response metadata.
+
+    output : str
+        Desired output physical units ('DISP', 'VEL', 'ACC', or 'DEF').
+
+    pre_filt : tuple or None
+        Pre-filter frequencies (f1, f2, f3, f4) in Hz. If None, inferred based on `output`.
+
+    verbose : bool
+        If True, print diagnostic messages.
+
+    Returns:
+    --------
+    Stream
+        Cleaned and calibrated stream with removed response. Traces that fail are skipped.
+    """
+    return clean_stream(
+        stream_in=seismic_st,
+        taperFraction=0.05,
+        filterType='bandpass',
+        freq=(1.0, 10.0),  # Can be overridden by user or dynamically set based on pre_filt
+        corners=4,
+        zerophase=True,
+        inv=inv,
+        outputType=output,
+        verbose=verbose
+    )
 
 
 from sklearn.mixture import GaussianMixture
