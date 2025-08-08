@@ -31,21 +31,41 @@ if not os.path.isfile(infraBSU_xml):
 # === Build full inventory with response ===
 print("\n### Building full inventory with responses ###")
 
-inventory = get_stationXML_inventory(
-    xmlfile=xml_file,
-    excel_file=metadata_excel,
-    sheet_name='ksc_stations_master',
-    infrabsu_xml=infraBSU_xml,
-    nrl_path=nrl_path,
-    overwrite=True,
-    verbose=True
-)
+try:
+    inventory = get_stationXML_inventory(
+        xmlfile=xml_file,
+        excel_file=metadata_excel,
+        sheet_name='ksc_stations_master',
+        infrabsu_xml=infraBSU_xml,
+        nrl_path=nrl_path,
+        overwrite=True,
+        verbose=True
+    )
+except Exception as e:
+    print(f"[ERROR] Failed to build inventory: {e}")
+    inventory = None    
 
-# === Export to dataless SEED + RESP format ===
-print("\n### Exporting to dataless SEED and RESP ###")
 
-inventory2dataless_and_resp(
-    inventory,
-    output_dir=resp_dir,
-    stationxml_seed_converter_jar=stationxml_converter_jar
-)
+if inventory:
+
+    print(f'\n\n********\nFinal inventory: {inventory}')
+
+    # === Export to dataless SEED + RESP format ===
+    print("\n### Exporting to dataless SEED and RESP ###")
+
+    try:
+        ############################################################################
+        # Note: The stationxml-seed-converter.jar must be in the user's bin directory.
+        # It can be downloaded from
+
+        inventory2dataless_and_resp(
+            inventory,
+            output_dir=resp_dir,
+            stationxml_seed_converter_jar=stationxml_converter_jar
+        )
+    except Exception as e:
+        print(f"[ERROR] Failed to export to dataless SEED and RESP: {e}")
+    else:
+        print(f"[INFO] Successfully exported to {resp_dir}")
+else:
+    print("[ERROR] No inventory available to export.")

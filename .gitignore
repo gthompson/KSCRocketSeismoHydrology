@@ -2,3 +2,7 @@ __pycache__/
 .ipynb_checkpoints/
 .DS_Store
 
+*.dataless
+rs1d_v4.xml
+rs3d_v5.xml
+rsb_v3.xml
