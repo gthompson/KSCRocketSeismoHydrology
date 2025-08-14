@@ -34,26 +34,15 @@ import sys
 import argparse
 import warnings
 from typing import List, Optional, Tuple
+import traceback
 
 import numpy as np
 import pandas as pd
 from obspy import UTCDateTime, read
 from obspy.signal.trigger import classic_sta_lta, trigger_onset
 
-# Try flovopy SDSobj; if not available, we fallback to ObsPy SDS Client
-SDSOBJ_OK = True
-try:
-    from flovopy.sds.sds import SDSobj
-except Exception as e:
-    SDSOBJ_OK = False
-    SDSOBJ_IMPORT_ERR = e
-
-FALLBACK_OK = True
-try:
-    from obspy.clients.filesystem.sds import Client as SDSClient
-except Exception as e:
-    FALLBACK_OK = False
-    FALLBACK_IMPORT_ERR = e
+from flovopy.sds.sds import SDSobj
+from flovopy.processing.detection import add_sta_lta_triggers_to_stream, plot_stalta_triggers_on_stream
 
 import matplotlib
 matplotlib.use("Agg")  # for headless environments
@@ -87,6 +76,7 @@ def to_utc(val) -> UTCDateTime:
     if pd.isna(val):
         raise ValueError("Missing time value")
     # Try float epoch
+    val=val[:19]
     try:
         return UTCDateTime(float(val))
     except Exception:
@@ -120,27 +110,14 @@ def get_stream_from_sds(sds_root: str, net: str, sta: str, loc: str, cha: str,
     Get an ObsPy Stream from SDS using flovopy.sds.sds.SDSobj if available,
     otherwise use ObsPy's SDSClient as a fallback.
     """
-    # Prefer flovopy
-    if SDSOBJ_OK:
-        try:
-            sds = SDSobj(sds_root)
-            # Many wrappers emulate ObsPy SDSClient
-            st = sds.client.get_waveforms(net, sta, loc or "", cha, t1, t2, cleanup=True)
-            return st
-        except Exception as e:
-            warnings.warn(f"SDSobj failed ({e}); trying ObsPy SDSClient fallback...")
 
-    if FALLBACK_OK:
-        client = SDSClient(sds_root)
-        st = client.get_waveforms(net, sta, loc or "", cha, t1, t2)
+    try:
+        sds = SDSobj(sds_root)
+        # Many wrappers emulate ObsPy SDSClient
+        st = sds.client.get_waveforms(net, sta, loc or "", cha, t1, t2, cleanup=True)
         return st
-
-    # If neither import worked:
-    if SDSOBJ_OK is False and FALLBACK_OK is False:
-        raise ImportError(f"Cannot access SDS: flovopy error={SDSOBJ_IMPORT_ERR}, "
-                          f"ObsPy fallback error={FALLBACK_IMPORT_ERR}")
-    raise RuntimeError("Unable to acquire waveforms from SDS")
-
+    except Exception as e:
+        warnings.warn(f"SDSobj failed ({e})")
 
 def run_sta_lta_on_trace(tr, sta_s: float, lta_s: float, on: float, off: float,
                          max_trigs: int = 2, t0_hint: Optional[UTCDateTime] = None,
@@ -229,22 +206,20 @@ def discover_all_trace_ids_with_sdsobj(sds_root: str, intervals, skip_low_rate_c
     using flovopy.sds.sds.SDSobj._get_nonempty_traceids. Returns a sorted list of strings
     like 'NET.STA.LOC.CHA'.
     """
-    if not SDSOBJ_OK:
-        raise ImportError("flovopy.sds.sds.SDSobj is required for automatic station discovery.")
-    sds = SDSobj(sds_root)
+
+   
     found = set()
-    for (t1, t2) in intervals:
-        start_epoch = float(t1.timestamp)
-        end_epoch = float(t2.timestamp)
+    for (start_epoch, end_epoch) in intervals:
         try:
             tids = sds._get_nonempty_traceids(start_epoch, end_epoch,
                                               skip_low_rate_channels=skip_low_rate_channels,
                                               speed=speed)
+            print(f"For event {start_epoch}–{end_epoch}: {tids}")
             for tid in tids:
                 found.add(tid)
         except Exception as e:
             import warnings
-            warnings.warn(f"Trace discovery failed for interval {t1}–{t2}: {e}")
+            warnings.warn(f"Trace discovery failed for interval {start_epoch}–{end_epoch}: {e}")
             continue
     return sorted(found)
 
@@ -283,7 +258,7 @@ def main():
     # Load events
     df = load_events(args.csv)
 
-    
+    '''
     # Determine stations
     if args.stations:
         stations = parse_station_list(args.stations)
@@ -299,7 +274,7 @@ def main():
         if not tid_list:
             raise RuntimeError("No non-empty trace IDs discovered in SDS for the provided windows.")
         stations = [parse_trace_id_string(tid) for tid in tid_list]
-
+    '''
 
     # Prepare output
     rows = []
@@ -309,6 +284,9 @@ def main():
         ql_dir = args.quicklooks
         os.makedirs(ql_dir, exist_ok=True)
 
+
+
+    sdsin = SDSobj(args.sds_root)
     for idx, ev in df.iterrows():
         t1 = ev["t_start"] - args.pad_before
         t2 = ev["t_end"] + args.pad_after
@@ -322,45 +300,59 @@ def main():
             key = f"event_{col}" if col in reserved else col
             ev_meta[key] = ev[col]
 
+        ids = sdsin._get_nonempty_traceids(t1, t2)
+        #if len(ids)>0:
+        try:
+            sdsin.read(t1, t2, speed=2)
+            st = sdsin.stream
+            if len(st)==0:
+                raise RuntimeError("Empty stream")
+            st.detrend('linear')
+            st.taper(0.03)
+            picks_by_trace, picks_df = add_sta_lta_triggers_to_stream(
+                st, sta_s=2.0, lta_s=10.0, on=2.0, off=1.0, max_trigs=2
+            )
+            print(picks_df)
+            # Each tr now has tr.stats.triggers = [[UTC_on, UTC_off], ...]
+            # and (if available) tr.stats.trigger_details = [{...}, ...]
 
-        for (net, sta, loc, cha) in stations:
-            try:
-                st = get_stream_from_sds(args.sds_root, net, sta, loc, cha, t1, t2)
-                if len(st) == 0:
-                    raise RuntimeError("Empty stream")
-                st.merge(method=1, fill_value="interpolate")
-                st.detrend("constant")
-                st.taper(0.01)
+            for tr in st:
+                net, sta, loc, cha = tr.id.split(".")  # fix: use 'cha' consistently
 
-                tr = st[0]  # single-channel
-                picks = run_sta_lta_on_trace(
-                    tr, args.sta, args.lta, args.on, args.off,
-                    max_trigs=2 if args.max_two_triggers else 1,
-                    t0_hint=ev.get("t0", ev["t_start"]),
-                    min_sep_s=args.min_sep,
-                )
-
-                # Optionally save quicklook
-                if ql_dir:
-                    base = f"ev{idx:04d}_{net}.{sta}.{loc or '--'}.{cha}.png"
-                    out_png = os.path.join(ql_dir, base)
-                    save_quicklook(tr, picks, out_png)
-
-                # Record results
-                if picks:
-                    for k, p in enumerate(picks, 1):
+                # Prefer detailed records if present
+                details = getattr(tr.stats, "trigger_details", None)
+                if details and len(details) > 0:
+                    for k, p in enumerate(details, 1):
                         rows.append({
                             **ev_meta,
                             "event_index": int(idx),
                             "net": net, "sta": sta, "loc": loc, "cha": cha,
                             "window_start": str(t1), "window_end": str(t2),
                             "trigger_rank": k,
-                            "trigger_on_time": str(p["t_on"]),
-                            "trigger_off_time": str(p["t_off"]),
-                            "peak_cft": p["peak_cft"],
-                            "dt_from_hint_s": p["dt_from_hint"],
+                            "trigger_on_time": str(p.get("t_on")),
+                            "trigger_off_time": str(p.get("t_off")),
+                            "peak_cft": p.get("peak_cft"),
+                            "dt_from_hint_s": p.get("dt_from_hint"),
+                        })
+                    continue  # done with this trace
+
+                # Fallback to simple on/off pairs
+                pairs = getattr(tr.stats, "triggers", []) or []
+                if pairs:
+                    for k, (on_utc, off_utc) in enumerate(pairs, 1):
+                        rows.append({
+                            **ev_meta,
+                            "event_index": int(idx),
+                            "net": net, "sta": sta, "loc": loc, "cha": cha,
+                            "window_start": str(t1), "window_end": str(t2),
+                            "trigger_rank": k,
+                            "trigger_on_time": str(on_utc),
+                            "trigger_off_time": str(off_utc),
+                            "peak_cft": None,
+                            "dt_from_hint_s": None,
                         })
                 else:
+                    # No triggers for this trace
                     rows.append({
                         **ev_meta,
                         "event_index": int(idx),
@@ -371,17 +363,12 @@ def main():
                         "trigger_off_time": None,
                         "peak_cft": None,
                         "dt_from_hint_s": None,
-                    })
+                    }
 
-            except Exception as e:
-                rows.append({
-                    **ev_meta,
-                    "event_index": int(idx),
-                    "net": net, "sta": sta, "loc": loc, "cha": cha,
-                    "window_start": str(t1), "window_end": str(t2),
-                    "error": str(e),
-                })
-                continue
+
+        except Exception as e:
+            print(e)
+            traceback.print_exc()
 
     out_df = pd.DataFrame(rows)
     out_df.to_csv(args.out, index=False)
