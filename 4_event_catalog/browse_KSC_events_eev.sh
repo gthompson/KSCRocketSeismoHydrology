@@ -2,9 +2,9 @@
 set -euo pipefail
 
 EEV_PY="$HOME/Developer/flovopy/flovopy/analysis/eev.py"
-ROOT="/data/KSC/all_florida_launches"
+ROOT="/data/KSC/all_florida_launches/network_detected"
 STXML="$HOME/Dropbox/DATA/station_metadata/KSC2.xml"
-PATTERN="**/*.mseed"
+PATTERN="**/*LAUNCH*"
 ENV_NAME="skience24_pyrocko"
 
 # Ensure conda is available in non-interactive shells
