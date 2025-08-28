@@ -12,14 +12,12 @@ system = platform.system()
 # Use Dropbox path on macOS; otherwise default to /data
 metadata_dir = (
     os.path.join(home, "Dropbox", "DATA", "station_metadata")
-    if system == "Darwin"
-    else "/data/station_metadata"
 )
 os.makedirs(metadata_dir, exist_ok=True)
 
 # Define all relevant paths
-xml_file = os.path.join(metadata_dir, "KSC2.xml")
-resp_dir = os.path.join(metadata_dir, "RESP2")
+xml_file = os.path.join(metadata_dir, "KSC3.xml")
+resp_dir = os.path.join(metadata_dir, "RESP3")
 nrl_path = None  # keep None to use remote NRL (NRLv1 online)
 metadata_excel = os.path.join(metadata_dir, "ksc_stations_master_v2.xlsx")
 stationxml_converter_jar = os.path.join(home, "bin", "stationxml-seed-converter.jar")
@@ -49,6 +47,8 @@ except Exception as e:
 
 if inventory:
     print(f"\n\n********\nFinal inventory: {inventory}")
+
+    exit()
 
     # === Export to dataless SEED + RESP format ===
     print("\n### Exporting to dataless SEED and RESP ###")
